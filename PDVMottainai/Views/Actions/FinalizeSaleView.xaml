@@ -1,0 +1,176 @@
+<UserControl x:Class="PDVMottainai.Views.Actions.FinalizeSaleView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Language="pt-BR">
+    <Grid>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="1.1*"/><ColumnDefinition Width="1.2*"/></Grid.ColumnDefinitions>
+        <Grid Grid.Column="0" Margin="0,0,20,0">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <StackPanel Margin="2,0,0,12">
+                <TextBlock Text="Itens da venda" FontSize="20" FontWeight="Bold" Foreground="#102A43"/>
+                <TextBlock x:Name="CustomerTextBlock" Text="Consumidor não identificado"
+                           FontSize="13" Foreground="#667784" Margin="0,3,0,0"/>
+            </StackPanel>
+            <ListView x:Name="SaleItemsList" Grid.Row="1" BorderThickness="0" Background="Transparent"
+                      ScrollViewer.VerticalScrollBarVisibility="Auto">
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Padding" Value="12,10"/>
+                        <Setter Property="Margin" Value="0,0,0,6"/>
+                        <Setter Property="Background" Value="#F5F8FA"/>
+                        <Setter Property="BorderThickness" Value="0"/>
+                        <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Text="{Binding Product.Name}" Foreground="#102A43" FontWeight="SemiBold" FontSize="14"/>
+                                <TextBlock Text="{Binding Quantity, StringFormat=Qtd.: {0}}" Foreground="#667784" FontSize="12" Margin="0,3,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding LineTotal, StringFormat={}{0:C}, ConverterCulture=pt-BR}"
+                                       Foreground="#102A43" FontWeight="Bold" FontSize="14" VerticalAlignment="Center"
+                                       TextAlignment="Right" Margin="12,0,0,0" MinWidth="100"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </Grid>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+            <Border Background="#F5F8FA" CornerRadius="14" Padding="20">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+                <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Text="Total a pagar" FontSize="13" Foreground="#667784"/>
+                        <TextBlock x:Name="TotalTextBlock" Text="R$ 0,00" FontSize="34"
+                                   FontWeight="Bold" Foreground="#102A43" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" HorizontalAlignment="Right">
+                        <TextBlock Text="FALTA PAGAR" FontSize="11" FontWeight="Bold"
+                                   Foreground="#667784" HorizontalAlignment="Right"/>
+                        <TextBlock x:Name="RemainingTextBlock" Text="R$ 0,00" FontSize="18"
+                                   FontWeight="Bold" Foreground="#EB7A24" HorizontalAlignment="Right" Margin="0,5,0,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,14,0,12">
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0">
+                        <TextBlock Text="Forma de pagamento" FontSize="12" FontWeight="SemiBold" Foreground="#667784" Margin="0,0,0,5"/>
+                        <ComboBox x:Name="PaymentMethodComboBox" SelectedIndex="0" Height="42"
+                                  SelectionChanged="PaymentMethodComboBox_SelectionChanged">
+                            <ComboBoxItem Content="Pix"/>
+                            <ComboBoxItem Content="Dinheiro"/>
+                            <ComboBoxItem Content="Cartão de débito"/>
+                            <ComboBoxItem Content="Cartão de crédito"/>
+                        </ComboBox>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="0,12,0,0">
+                        <TextBlock Text="Valor nesta forma de pagamento" FontSize="12" FontWeight="SemiBold" Foreground="#667784" Margin="0,0,0,5"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <TextBox x:Name="PaymentAmountTextBox" Height="42" TextChanged="PaymentAmountTextBox_TextChanged"/>
+                            <Button Grid.Column="1" Content="Adicionar pagamento" Background="#102A43" Foreground="White"
+                                    BorderThickness="0" Padding="16,7" Margin="8,0,0,0" MinWidth="150" Cursor="Hand"
+                                    Click="AddPayment_Click"/>
+                        </Grid>
+                    </StackPanel>
+                    <Border x:Name="CashPanel" Grid.Row="2" Background="White"
+                            CornerRadius="10" Padding="12" Margin="0,12,0,0" Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,8,0">
+                                <TextBlock Text="Valor entregue" FontSize="11" Foreground="#667784" Margin="0,0,0,4"/>
+                                <TextBox x:Name="CashReceivedTextBox" Height="38" TextChanged="CashReceivedTextBox_TextChanged"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Text="TROCO" FontSize="11" FontWeight="Bold" Foreground="#667784"/>
+                                <TextBlock x:Name="ChangeTextBlock" Text="R$ 0,00" FontSize="19" FontWeight="Bold" Foreground="#EB7A24" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                </Grid>
+
+                <Grid Grid.Row="2">
+                    <Border x:Name="PixPanel" Background="White" CornerRadius="12" Padding="14"
+                            Visibility="Visible">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Border Width="142" Height="142" BorderBrush="#DCE6EB" BorderThickness="1"
+                                    CornerRadius="8" Background="White" Padding="8">
+                                <Grid>
+                                    <Image x:Name="PixQrImage" Stretch="Uniform" Visibility="Collapsed"/>
+                                    <StackPanel x:Name="PixPlaceholder" VerticalAlignment="Center" HorizontalAlignment="Center">
+                                        <TextBlock Text="PIX" Foreground="#102A43" FontWeight="Bold" FontSize="22" HorizontalAlignment="Center"/>
+                                        <TextBlock x:Name="PixPlaceholderText" Text="Configure a chave PIX para gerar a cobrança."
+                                                   Foreground="#667784" FontSize="10" Width="118"
+                                                   TextAlignment="Center" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="16,0,0,0">
+                                <TextBlock Text="PAGAMENTO PIX" FontSize="11" FontWeight="Bold" Foreground="#EB7A24"/>
+                                <TextBlock x:Name="PixAmountTextBlock" Text="Informe o valor para preparar o PIX."
+                                           FontSize="15" FontWeight="SemiBold" Foreground="#102A43"
+                                           TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                <TextBlock x:Name="DemoPixNotice" Text="MODO DEMONSTRAÇÃO · QR NÃO PAGÁVEL"
+                                           FontSize="10" FontWeight="Bold" Foreground="#B54708"
+                                           TextWrapping="Wrap" Margin="0,5,0,0" Visibility="Collapsed"/>
+                                <TextBlock Text="Adicione este pagamento para dividir com outro meio."
+                                           FontSize="12" Foreground="#667784" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                                <Button x:Name="CopyPixButton" Content="Copiar PIX copia e cola"
+                                        Background="Transparent" BorderThickness="0" Padding="0"
+                                        Foreground="#EB7A24" FontWeight="SemiBold" HorizontalAlignment="Left"
+                                        Margin="0,10,0,0" Visibility="Collapsed" Click="CopyPixButton_Click"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border x:Name="OtherPaymentPanel" Background="White" CornerRadius="12" Padding="20"
+                            Visibility="Collapsed">
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="PAGAMENTO" FontSize="11" FontWeight="Bold" Foreground="#EB7A24"/>
+                            <TextBlock Text="Informe o valor a ser cobrado neste meio. Você pode adicionar outros meios para completar a venda."
+                                       FontSize="15" Foreground="#102A43" TextWrapping="Wrap" Margin="0,8,0,0"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <StackPanel Grid.Row="3" Margin="0,12,0,0">
+                    <TextBlock x:Name="FeedbackTextBlock" Foreground="#BA4E21" FontSize="12"
+                               TextWrapping="Wrap" Margin="0,0,0,4"/>
+                    <Border Background="White" CornerRadius="10" Padding="10,8">
+                        <StackPanel>
+                            <TextBlock Text="Pagamentos adicionados" FontSize="11" FontWeight="Bold" Foreground="#667784" Margin="2,0,0,4"/>
+                            <ListView x:Name="PaymentSplitsList" MaxHeight="108" BorderThickness="0"
+                              Background="Transparent" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListView.ItemTemplate><DataTemplate>
+                                    <Grid Margin="4,3">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Method}" Foreground="#102A43" FontWeight="SemiBold"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Amount, StringFormat={}{0:C}}"
+                                                   Foreground="#102A43" Margin="12,0"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Change, StringFormat=Troco: {0:C}}"
+                                                   Foreground="#EB7A24" Visibility="{Binding ChangeVisibility}"/>
+                                        <Button Grid.Column="3" Content="×" Tag="{Binding}" Width="24" Height="24"
+                                                Background="Transparent" BorderThickness="0" Foreground="#82919A"
+                                                Cursor="Hand" Click="RemovePayment_Click" ToolTip="Remover pagamento"/>
+                                    </Grid>
+                                </DataTemplate></ListView.ItemTemplate>
+                            </ListView>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </Border>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

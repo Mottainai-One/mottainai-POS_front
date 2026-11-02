@@ -1,0 +1,33 @@
+<UserControl x:Class="PDVMottainai.Views.Actions.SaleCustomerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <TextBlock Text="Identifique o cliente" FontSize="22" FontWeight="Bold" Foreground="#102A43"/>
+        <TextBlock Grid.Row="1" Text="Informe o CPF para verificar o cadastro Mottainai e as promoções disponíveis."
+                   FontSize="14" Foreground="#667784" TextWrapping="Wrap" Margin="0,5,0,14"/>
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <TextBox x:Name="CpfTextBox" Height="44" MaxLength="14" ToolTip="000.000.000-00"/>
+            <Button Grid.Column="1" Content="Verificar CPF" Background="#EB7A24" Foreground="#102A43"
+                    FontWeight="Bold" Padding="18,8" Margin="10,0,0,0" BorderThickness="0" Cursor="Hand"
+                    Click="VerifyCpf_Click"/>
+        </Grid>
+        <Border Grid.Row="3" Background="#EAF1F4" CornerRadius="12" Padding="16" Margin="0,16,0,0">
+            <StackPanel>
+                <TextBlock x:Name="CustomerStatusText" Text="Consumidor não identificado"
+                           FontSize="16" FontWeight="Bold" Foreground="#102A43"/>
+                <TextBlock x:Name="MembershipText" Text="As promoções Mottainai são aplicadas a clientes cadastrados."
+                           FontSize="13" Foreground="#667784" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                <TextBlock x:Name="ValidationText" Foreground="#BA4E21" FontSize="12"
+                           TextWrapping="Wrap" Margin="0,5,0,0"/>
+                <Border Height="1" Background="#D5E0E6" Margin="0,14,0,12"/>
+                <TextBlock Text="CPF NA NOTA FISCAL" FontSize="11" FontWeight="Bold" Foreground="#667784"/>
+                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                    <RadioButton x:Name="InvoiceYes" Content="Sim" GroupName="InvoiceCpf" Foreground="#102A43" Margin="0,0,22,0"/>
+                    <RadioButton x:Name="InvoiceNo" Content="Não" GroupName="InvoiceCpf" IsChecked="True" Foreground="#102A43"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+    </Grid>
+</UserControl>
