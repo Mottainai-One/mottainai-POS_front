@@ -5,7 +5,7 @@ using System.Windows;
 namespace PDVMottainai
 {
     /// <summary>
-    /// Interaction logic for App.xaml
+    /// Lógica de interação de App.xaml
     /// </summary>
     public partial class App : Application
     {

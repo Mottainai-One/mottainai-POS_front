@@ -3,6 +3,7 @@ using PDVMottainai.Services;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
@@ -131,6 +132,23 @@ namespace PDVMottainai.Views
             }
         }
 
+        private void HelpButton_Click(object sender, RoutedEventArgs e)
+        {
+            const string phoneNumber = "5511956775122";
+            const string message = "Olá, preciso de ajuda com o PDV Mottainai.";
+            var url = $"https://wa.me/{phoneNumber}?text={Uri.EscapeDataString(message)}";
+
+            try
+            {
+                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+            }
+            catch (Exception)
+            {
+                txtMsg.Text = "Não foi possível abrir o WhatsApp. Verifique se ele está disponível neste dispositivo.";
+                LoginErrorPanel.Visibility = Visibility.Visible;
+            }
+        }
+
         // Sempre que o usuário mudar algo em suas credenciais:
         private void txtEmail_TextChanged(object sender, TextChangedEventArgs e){ TakeStores();}
         private void txtPasswordClose_PasswordChanged(object sender, RoutedEventArgs e){ TakeStores();}
@@ -145,12 +163,12 @@ namespace PDVMottainai.Views
             if (UserFound != null)
             {
                 listStores(UserFound.UserId);
-                txtMsg.Visibility = Visibility.Collapsed;
+                LoginErrorPanel.Visibility = Visibility.Collapsed;
             }
             else
             {
                 txtMsg.Text = "Credenciais inválidas!";
-                txtMsg.Visibility = Visibility.Visible;
+                LoginErrorPanel.Visibility = Visibility.Visible;
                 terminal.ItemsSource = null;
                 store.ItemsSource = null;
             }

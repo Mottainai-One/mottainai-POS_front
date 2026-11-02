@@ -4,6 +4,51 @@
              xmlns:local="clr-namespace:PDVMottainai"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-         
+        <ResourceDictionary>
+            <Color x:Key="BrandNavyColor">#102A43</Color>
+            <Color x:Key="BrandNavyDeepColor">#0B2033</Color>
+            <Color x:Key="BrandOrangeColor">#EB7A24</Color>
+            <Color x:Key="BrandOrangeLightColor">#FFF0E2</Color>
+            <Color x:Key="BrandPaperColor">#FFF8F1</Color>
+            <Color x:Key="BrandMistColor">#EAF1F4</Color>
+            <Color x:Key="BrandTextMutedColor">#667784</Color>
+            <Color x:Key="BrandLineColor">#DCE6EB</Color>
+            <SolidColorBrush x:Key="BrandNavyBrush" Color="{StaticResource BrandNavyColor}"/>
+            <SolidColorBrush x:Key="BrandOrangeBrush" Color="{StaticResource BrandOrangeColor}"/>
+            <SolidColorBrush x:Key="BrandPaperBrush" Color="{StaticResource BrandPaperColor}"/>
+            <SolidColorBrush x:Key="BrandMistBrush" Color="{StaticResource BrandMistColor}"/>
+            <SolidColorBrush x:Key="BrandTextMutedBrush" Color="{StaticResource BrandTextMutedColor}"/>
+            <SolidColorBrush x:Key="BrandLineBrush" Color="{StaticResource BrandLineColor}"/>
+
+            <Style TargetType="TextBox">
+                <Setter Property="FontFamily" Value="Segoe UI"/>
+                <Setter Property="FontSize" Value="15"/>
+                <Setter Property="Foreground" Value="#102A43"/>
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="#DCE6EB"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="12,8"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+            <Style TargetType="ComboBox">
+                <Setter Property="FontFamily" Value="Segoe UI"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="Foreground" Value="#102A43"/>
+                <Setter Property="Background" Value="White"/>
+                <Setter Property="BorderBrush" Value="#DCE6EB"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="Padding" Value="10,7"/>
+            </Style>
+            <Style TargetType="Button">
+                <Setter Property="FontFamily" Value="Segoe UI"/>
+                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="Foreground" Value="White"/>
+                <Setter Property="Background" Value="#102A43"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Padding" Value="16,9"/>
+                <Setter Property="Cursor" Value="Hand"/>
+            </Style>
+        </ResourceDictionary>
     </Application.Resources>
 </Application>
