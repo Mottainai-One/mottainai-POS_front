@@ -5,8 +5,13 @@
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
       xmlns:local="clr-namespace:PDVMottainai.Views"
       mc:Ignorable="d"
-      Background="#E8F7ED"
-      Title="salePage">
+      Background="#FFF8F1"
+      Focusable="True"
+      Loaded="SalePage_Loaded"
+      Unloaded="SalePage_Unloaded"
+      PreviewKeyDown="SalePage_PreviewKeyDown"
+      Title="salePage"
+>
 
     <Page.Resources>
         <Style x:Key="CleanTextBoxStyle" TargetType="TextBox">
@@ -53,7 +58,35 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        <!-- Estilo para o Card (Borda com Sombra) -->
+        <Style x:Key="FooterActionButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="BorderBrush" Value="#DCE6EB"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="5"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ActionBorder" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="10">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ActionBorder" Property="BorderBrush" Value="#EB7A24"/>
+                                <Setter TargetName="ActionBorder" Property="Background" Value="#FFF8F1"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ActionBorder" Property="Opacity" Value="0.75"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <!-- Estilo para o cartão (borda com sombra) -->
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="Background" Value="White"/>
             <Setter Property="CornerRadius" Value="10"/>
@@ -70,14 +103,14 @@
             </Setter>
         </Style>
 
-        <!-- Estilo para os Títulos dentro dos Cards -->
+        <!-- Estilo para os títulos dentro dos cartões -->
         <Style x:Key="CardTitleStyle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="Regular"/>
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="Foreground" Value="#555555"/>
         </Style>
 
-        <!-- Estilo para os Valores (Textos em Negrito) dentro dos Cards -->
+        <!-- Estilo para os valores (textos em negrito) dentro dos cartões -->
         <Style x:Key="CardValueStyle" TargetType="TextBlock">
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="FontSize" Value="15"/>
@@ -93,10 +126,10 @@
             <RowDefinition Height="2*"/>
         </Grid.RowDefinitions>
 
-        <!-- HEADER -->
+        <!-- CABEÇALHO -->
         <Grid 
             Grid.Row="0" 
-            Background="#1B5B36">
+            Background="#102A43">
 
             <Image
                 Source="/IMG/mottainai.png"
@@ -111,19 +144,18 @@
                 Foreground="White"
                 FontWeight="SemiBold"/>
 
-            <TextBlock x:Name="txtDateTime"
-                VerticalAlignment="Center"
-                HorizontalAlignment="Right"
-                FontSize="25"
-                Foreground="White"
-                FontWeight="SemiBold"
-                Margin="0,0,30,0"/>
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0,0,30,0">
+                <TextBlock x:Name="txtCurrentTime" Text="--:--:--" TextAlignment="Right"
+                           FontSize="21" Foreground="White" FontWeight="Bold"/>
+                <TextBlock x:Name="txtCurrentDate" Text="--/--/----" TextAlignment="Right"
+                           FontSize="12" Foreground="#D7E3EA" Margin="0,1,0,0"/>
+            </StackPanel>
         </Grid>
 
-        <!-- INFO CARDS (ROW 1) -->
+        <!-- CARTÕES DE INFORMAÇÃO (LINHA 1) -->
         <Grid 
             Grid.Row="1" 
-            Background="#E8F7ED">
+            Background="#FFF8F1">
 
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
@@ -131,7 +163,7 @@
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
 
-            <!-- Grid que segura os 5 cards -->
+            <!-- Grade que organiza os cinco cartões -->
             <Grid 
                 Grid.Row="1" 
                 Margin="10,0">
@@ -144,7 +176,7 @@
                     <ColumnDefinition Width="1.4*"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- CARD 1: N° Venda -->
+                <!-- CARTÃO 1: Nº da venda -->
                 <Border 
                     Grid.Column="0" 
                     Style="{StaticResource CardStyle}">
@@ -174,7 +206,7 @@
                     </Grid>
                 </Border>
 
-                <!-- CARD 2: CPF do Cliente -->
+                <!-- CARTÃO 2: CPF do cliente -->
                 <Border 
                     Grid.Column="1" 
                     Style="{StaticResource CardStyle}">
@@ -199,13 +231,13 @@
                                 Style="{StaticResource CardTitleStyle}"/>
 
                             <TextBlock x:Name="txtNumSal" 
-                                Text="000.000.000-00" 
+                                Text="Não informado" 
                                 Style="{StaticResource CardValueStyle}"/>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- CARD 3: Nome do Cliente -->
+                <!-- CARTÃO 3: Nome do cliente -->
                 <Border 
                     Grid.Column="2" 
                     Style="{StaticResource CardStyle}">
@@ -230,13 +262,13 @@
                                 Style="{StaticResource CardTitleStyle}"/>
 
                             <TextBlock x:Name="txtNumSa" 
-                                Text="Demo Customer" 
+                                Text="Consumidor não identificado" 
                                 Style="{StaticResource CardValueStyle}"/>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- CARD 4: Nível do Cliente -->
+                <!-- CARTÃO 4: Nível do cliente -->
                 <Border 
                     Grid.Column="3" 
                     Style="{StaticResource CardStyle}">
@@ -261,17 +293,17 @@
                                 Style="{StaticResource CardTitleStyle}"/>
 
                             <TextBlock x:Name="txtNumS" 
-                                Text="Nível sustentável" 
+                                Text="Não identificado" 
                                 Style="{StaticResource CardValueStyle}"/>
                         </StackPanel>
                     </Grid>
                 </Border>
 
-                <!-- CARD 5: Status da Venda -->
-                <Border 
+                <!-- CARTÃO 5: Status da venda -->
+                <Border x:Name="saleStatusCard"
                     Grid.Column="4" 
                     Style="{StaticResource CardStyle}"
-                    Background="#C7F7D7">
+                    Background="#E6F0FA">
 
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -279,27 +311,26 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
 
-                        <Image 
-                            Source="/IMG/inProgressIcon.png" 
-                            Margin="15,12,10,12" 
-                            VerticalAlignment="Center"/>
+                        <Image x:Name="saleStatusIcon" Width="44" Height="44" Stretch="Uniform"
+                               Margin="12,9,10,9" VerticalAlignment="Center"/>
 
                         <TextBlock x:Name="txtNum" 
                             Grid.Column="1" 
                             Text="Venda em andamento" 
                             TextWrapping="Wrap" 
                             VerticalAlignment="Center" 
-                            Style="{StaticResource CardValueStyle}"/>
+                            Style="{StaticResource CardValueStyle}"
+                            Foreground="#2864A4"/>
                     </Grid>
                 </Border>
 
             </Grid>
         </Grid>
 
-        <!-- BODY -->
+        <!-- CORPO -->
         <Grid 
             Grid.Row="2" 
-            Background="#E8F7ED">
+            Background="#FFF8F1">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="6*"/>
                 <ColumnDefinition Width="8*"/>
@@ -317,9 +348,8 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="1.5*"/>
                                     <RowDefinition Height="2*"/>
-                                    <RowDefinition Height="2*"/>
-                                    <RowDefinition Height="2*"/>
-                                    <RowDefinition Height="4*"/>
+                                    <RowDefinition Height="1.4*"/>
+                                    <RowDefinition Height="4.6*"/>
                                 </Grid.RowDefinitions>
 
                                 <Grid Grid.Row="0">
@@ -333,9 +363,10 @@
                                             Text="Produto"
                                             HorizontalAlignment="Left"
                                             FontSize="17"
-                                            Margin="10,3,0,0"
+                                            Margin="24,3,0,0"
+                                            VerticalAlignment="Center"
                                             FontWeight="Bold"
-                                            Foreground="#1B5B36"
+                                            Foreground="#102A43"
                                             />
                                     </Grid>
                                     <Grid Grid.Row="1">
@@ -347,7 +378,7 @@
                                         <Border Grid.Column="0" 
                                                 BorderBrush="LightGray" 
                                                 BorderThickness="1"
-                                                Margin="10,2,5,5"
+                                                Margin="24,2,5,5"
                                                 CornerRadius="10">
                                             <TextBox x:Name="formBarcode"
                                                 Background="White"
@@ -357,19 +388,21 @@
                                                      VerticalAlignment="Center"
                                                      Margin="10,0,10,0"
                                                      TextChanged="formBarcode_TextChanged"
+                                                      PreviewKeyDown="formBarcode_PreviewKeyDown"
                                                      MaxLength="13"
                                                      />
                                         </Border>
                                         <Border Grid.Column="1" 
-                                                Background="#1B5B36"
+                                                Background="#102A43"
                                                 Margin="0,2,10,5"
                                                 CornerRadius="10"
                                                 BorderBrush="LightGray"
                                                 BorderThickness="1"
                                                 >
                                             <Button BorderThickness="0"
-                                                    Background="#1B5B36"
+                                                    Background="#102A43"
                                                     Margin="3,3,3,3"
+                                                    Click="SearchBarcode_Click"
                                                     Style="{StaticResource TransparentButton}">
                                                 <Image Source="/IMG/searchIcon.png"
                                                        Margin="3,3,3,3"/>
@@ -379,22 +412,17 @@
                                     </Grid>
 
                                 </Grid>
-                                <Border Grid.Row="1" Background="#E8F7ED"
-                                      Margin="10,5,10,0"
-                                        CornerRadius="10">
+                                <Border Grid.Row="1" Background="#EAF1F4"
+                                        Margin="24,5,10,0" CornerRadius="10" Padding="14,10">
                                     <Grid>
                                         <Grid.RowDefinitions>
-                                            <RowDefinition Height="*"/>
+                                            <RowDefinition Height="Auto"/>
                                             <RowDefinition Height="*"/>
                                         </Grid.RowDefinitions>
-                                        <Grid Grid.Row="0">
-                                            <TextBlock x:Name="txtProductName"
-                                            Text="-"
-                                            Margin="7,10,0,0"
-                                            FontSize="18"
-                                            FontWeight="Bold"
-                                            Foreground="#1B5B36"/>
-                                        </Grid>
+                                        <TextBlock x:Name="txtProductName" Text="-"
+                                                   FontSize="18" FontWeight="Bold"
+                                                   Foreground="#102A43" TextTrimming="CharacterEllipsis"
+                                                   Margin="0,0,0,8" VerticalAlignment="Center"/>
 
                                         <Grid Grid.Row="1">
                                             <Grid.ColumnDefinitions>
@@ -402,136 +430,182 @@
                                                 <ColumnDefinition Width="*"/>
                                             </Grid.ColumnDefinitions>
 
-                                            <Grid Grid.Column="0">
-                                                <TextBlock
-                                                    Text="Código de barras (F3)"
-                                                    Margin="10,0,0,0"
-                                                    FontSize="11"
-                                                    FontWeight="Regular"
-                                                    Foreground="Gray"/>
-                                                <TextBlock x:Name="txtBarCode"
-                                                    Text="-"
-                                                    VerticalAlignment="Bottom"
-                                                    Margin="10,0,10,10"
-                                                    FontSize="13"
-                                                    FontWeight="Medium"
-                                                    Foreground="#1B5B36"/>
-                                                <Button Margin="120,12,160,10"
-                                                        Style="{StaticResource TransparentButton}"
-                                                        Background="Transparent"
-                                                        BorderBrush="Transparent">
-                                                    <Image Source="/IMG/copyIcon.png"
-                                                               HorizontalAlignment="Right"
-                                                               Margin="2,2,2,2"
-                                                       />
-                                                </Button>
-
-                                            </Grid>
-
-                                            <Grid Grid.Column="1">
-                                                <TextBlock
-                                                    Text="SKU do produto"
-                                                    Margin="0,0,0,0"
-                                                    FontSize="11"
-                                                    FontWeight="Regular"
-                                                    Foreground="Gray"/>
-                                                <TextBlock x:Name="txtSkuProduct"
-                                                    Text="-"
-                                                    VerticalAlignment="Bottom"
-                                                    Margin="0,0,10,10"
-                                                    FontSize="13"
-                                                    FontWeight="Medium"
-                                                    Foreground="#1B5B36"/>
-                                                <Button Margin="120,12,160,10"
-                                                        Style="{StaticResource TransparentButton}"
-                                                        Background="Transparent"
-                                                        BorderBrush="Transparent">
-                                                    <Image Source="/IMG/copyIcon.png"
-                                                               HorizontalAlignment="Right"
-                                                               Margin="2,2,2,2"
-                                                       />
-                                                </Button>
-                                            </Grid>
-                                        </Grid>
-                                    </Grid>
-
-                                </Border>
-                                <Grid Grid.Row="2" 
-    Margin="10,5,10,0">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="3*"/>
-                                    </Grid.ColumnDefinitions>
-
-                                    <Grid Grid.Row="0" Grid.Column="0">
-                                        <Image Source="/IMG/wifiIcon.png"
-               Margin="15,15,15,15"/>
-                                    </Grid>
-                                    <Grid Grid.Row="0" Grid.Column="1" >
-
-                                        <Grid.RowDefinitions>
-                                            <RowDefinition Height="*"/>
-                                            <RowDefinition Height="3*"/>
-                                            <RowDefinition Height="*"/>
-                                        </Grid.RowDefinitions>
-
-                                        <Grid Grid.Row="1">
-                                            <Grid>
+                                            <Grid Grid.Column="0" Margin="0,0,12,0">
                                                 <Grid.RowDefinitions>
-                                                    <RowDefinition Height="2*"/>
-                                                    <RowDefinition Height="2*"/>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
                                                 </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.ColumnSpan="2" Text="Código de barras (Ctrl+B)"
+                                                           FontSize="12" Foreground="#667784"/>
+                                                <TextBlock x:Name="txtBarCode" Grid.Row="1" Text="-"
+                                                           FontSize="14" FontWeight="SemiBold"
+                                                           Foreground="#102A43" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Button Grid.Row="1" Grid.Column="1" Width="28" Height="28"
+                                                        Margin="8,2,0,0" Padding="4"
+                                                        Click="CopyBarcode_Click"
+                                                        Focusable="False"
+                                                        Style="{StaticResource TransparentButton}"
+                                                        ToolTip="Copiar código de barras (Ctrl+B)">
+                                                    <Image Source="/IMG/copyIcon.png" Stretch="Uniform"/>
+                                                </Button>
+                                            </Grid>
 
-                                                <Grid Grid.Row="0">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="9*"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <Grid Grid.Column="0" >
-                                                        <Ellipse Width="10" Height="10" Fill="GreenYellow"/>
-                                                    </Grid>
-                                                    <Grid Grid.Column="1">
-                                                        <TextBlock Text="Caixa Conectado" FontSize="20" FontWeight="Medium" VerticalAlignment="Center"/>
-                                                    </Grid>
-                                                </Grid>
-
-                                                <Grid Grid.Row="1">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*"/>
-                                                        <ColumnDefinition Width="9*"/>
-                                                    </Grid.ColumnDefinitions>
-
-                                                    <Grid Grid.Column="1">
-                                                        <TextBlock Text="Sistema conectado e funcionando normalmente" FontSize="15"/>
-                                                    </Grid>
-                                                </Grid>
-
+                                            <Grid Grid.Column="1" Margin="12,0,0,0">
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto"/>
+                                                    <RowDefinition Height="*"/>
+                                                </Grid.RowDefinitions>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.ColumnSpan="2" Text="SKU do produto (Ctrl+S)"
+                                                           FontSize="12" Foreground="#667784"/>
+                                                <TextBlock x:Name="txtSkuProduct" Grid.Row="1" Text="-"
+                                                           FontSize="14" FontWeight="SemiBold"
+                                                           Foreground="#102A43" VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <Button Grid.Row="1" Grid.Column="1" Width="28" Height="28"
+                                                        Margin="8,2,0,0" Padding="4"
+                                                        Click="CopySku_Click"
+                                                        Focusable="False"
+                                                        Style="{StaticResource TransparentButton}"
+                                                        ToolTip="Copiar SKU (Ctrl+S)">
+                                                    <Image Source="/IMG/copyIcon.png" Stretch="Uniform"/>
+                                                </Button>
                                             </Grid>
                                         </Grid>
-
-
-
                                     </Grid>
+                                </Border>
+                                <Grid Grid.Row="2" Margin="24,5,10,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <Image Grid.Column="0" Source="/IMG/wifiIcon.png" Width="48" Height="48" Stretch="Uniform" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="0,0,16,0"/>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <Ellipse x:Name="ConnectionIndicator" Width="10" Height="10" Fill="#EB7A24" Margin="0,0,12,0"/>
+                                            <TextBlock x:Name="ConnectionTitle" Text="Verificando conexão..." FontSize="18" FontWeight="Medium"/>
+                                        </StackPanel>
+                                        <TextBlock x:Name="ConnectionSubtitle" Text="Consultando acesso à internet" FontSize="13" Margin="22,3,8,0" TextWrapping="Wrap"/>
+                                    </StackPanel>
                                 </Grid>
-                                <Grid Grid.Row="3" Background="Blue"/>
-                                <Grid Grid.Row="4" Background="Black"/>
+                                <Grid Grid.Row="3" Margin="24,4,10,8">
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="1.1*"/>
+                                        <RowDefinition Height="1.1*"/>
+                                        <RowDefinition Height="2.8*"/>
+                                    </Grid.RowDefinitions>
+                                    <StackPanel Grid.Row="0" VerticalAlignment="Center">
+                                        <TextBlock x:Name="txtSecondaryLabel" Text="Valor total sem desconto" FontSize="15" Foreground="#666666"/>
+                                        <TextBlock x:Name="txtSecondaryValue" Text="R$ 0,00" FontSize="20" Margin="0,4,0,0" Foreground="#102A43"/>
+                                    </StackPanel>
+                                    <StackPanel Grid.Row="1" VerticalAlignment="Center">
+                                        <TextBlock x:Name="txtGainLabel" Text="Valor ganho" FontSize="15" Foreground="#666666"/>
+                                        <TextBlock x:Name="txtGainValue" Text="R$ 0,00" FontSize="20" Margin="0,4,0,0" Foreground="#EB7A24"/>
+                                    </StackPanel>
+                                    <Border Grid.Row="2" Background="#EAF1F4" CornerRadius="10" Padding="18,14">
+                                        <StackPanel VerticalAlignment="Center">
+                                            <TextBlock x:Name="txtHeroLabel" Text="Valor total com desconto" FontSize="18" FontWeight="Medium"/>
+                                            <TextBlock x:Name="txtHeroValue" Text="R$ 0,00" FontSize="42" Margin="0,8,0,0"
+                                                       FontWeight="Bold" Foreground="#102A43"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
                             </Grid>
                         </Border>
                     </Grid>
                 </Grid>
 
             </Border>
-            <Border Grid.Column="1" 
+            <Border Grid.Column="1"
                     Style="{StaticResource CardStyle}"
-                    Margin="5,0,20,1"/>
+                    Margin="5,0,20,1">
+                <Grid Margin="18,14">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock Text="Itens da venda" FontSize="18" FontWeight="Bold"
+                               Foreground="#102A43" Margin="10,3,0,12"
+                               VerticalAlignment="Center">
+                        <TextBlock.RenderTransform>
+                            <TranslateTransform Y="-6"/>
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+                    <Grid Grid.Row="1" Margin="4,0,4,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="4*"/>
+                            <ColumnDefinition Width="1.5*"/>
+                            <ColumnDefinition Width="1.2*"/>
+                            <ColumnDefinition Width="1.3*"/>
+                            <ColumnDefinition Width="1.3*"/>
+                            <ColumnDefinition Width="0.6*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Produto" FontSize="15" FontWeight="SemiBold" Foreground="#666666"/>
+                        <TextBlock Grid.Column="1" Text="Código" FontSize="15" FontWeight="SemiBold" Foreground="#666666"/>
+                        <TextBlock Grid.Column="2" Text="SKU" FontSize="15" FontWeight="SemiBold" Foreground="#666666"/>
+                        <TextBlock Grid.Column="3" Text="Preço normal" FontSize="15" FontWeight="SemiBold" Foreground="#666666"
+                                   Margin="12,0,0,0"/>
+                        <TextBlock Grid.Column="4" Text="Com desconto" FontSize="15" FontWeight="SemiBold" Foreground="#666666"
+                                   Margin="8,0,0,0"/>
+                        <TextBlock Grid.Column="5" Text="Qtd." FontSize="15" FontWeight="SemiBold" Foreground="#666666"/>
+                    </Grid>
+                    <ListView x:Name="scannedProductsList" Grid.Row="2"
+                              BorderThickness="0" Background="Transparent"
+                              ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListView.ItemContainerStyle>
+                            <Style TargetType="ListViewItem">
+                                <Setter Property="Padding" Value="4,10"/>
+                                <Setter Property="BorderBrush" Value="#DCE6EB"/>
+                                <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                            </Style>
+                        </ListView.ItemContainerStyle>
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="4*"/>
+                                        <ColumnDefinition Width="1.5*"/>
+                                        <ColumnDefinition Width="1.2*"/>
+                                        <ColumnDefinition Width="1.3*"/>
+                                        <ColumnDefinition Width="1.3*"/>
+                                        <ColumnDefinition Width="0.6*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Product.Name}" FontSize="16" FontWeight="SemiBold"
+                                               Foreground="#102A43" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Product.Barcode}" FontSize="15"
+                                               VerticalAlignment="Center" Foreground="#444444"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding Product.Sku}" FontSize="15"
+                                               VerticalAlignment="Center" Foreground="#444444"/>
+                                    <TextBlock Grid.Column="3" Text="{Binding RegularUnitPrice, StringFormat={}{0:C}}" FontSize="15"
+                                               Margin="12,0,0,0" VerticalAlignment="Center" Foreground="#444444"/>
+                                    <TextBlock Grid.Column="4" Text="{Binding EligibleDiscountPrice, StringFormat={}{0:C}, TargetNullValue=—}" FontSize="15"
+                                               Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#EB7A24" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="5" Text="{Binding Quantity}" FontSize="15"
+                                               TextAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
         </Grid>
 
 
-        <!-- FOOTER -->
+        <!-- RODAPÉ -->
         <Grid 
             Grid.Row="3" 
-            Background="#E8F7ED"
+            Background="#FFF8F1"
             Margin="0,10,0,0">
 
             <Grid.ColumnDefinitions>
@@ -546,21 +620,53 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
-            <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="20,0,0,0"/>
-            <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="2" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="3" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="4" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="5" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="6" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="7" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="7" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="8" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="9" Style="{StaticResource CardStyle}" Margin="10,0,0,0"/>
-            <Border Grid.Column="10" Style="{StaticResource CardStyle}" Margin="10,0,20,0"/>
+            <Button Grid.Column="0" Tag="StartSale" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Background="#E8F5EC" BorderBrush="#187344" BorderThickness="2" Margin="20,0,0,15">
+                <StackPanel><TextBlock Text="F1" Foreground="#187344" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center"/><TextBlock Text="Iniciar venda" Foreground="#187344" FontSize="15" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="1" Tag="CancelSale" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Background="#FDECEC" BorderBrush="#B42318" BorderThickness="2" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F2" Foreground="#B42318" FontWeight="Bold" FontSize="12" HorizontalAlignment="Center"/><TextBlock Text="Cancelar venda" Foreground="#B42318" FontSize="15" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="2" Tag="ConsultProduct" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F3" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Consultar produto" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="3" Tag="FinalizeSale" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F4" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Finalizar venda" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="4" Tag="RemoveProduct" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F5" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Excluir produto" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="5" Tag="SalesHistory" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F6" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Histórico de vendas" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="6" Tag="Promotions" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F7" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Promoções" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="11" Tag="FinalizeShift" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Background="#FFF0E3" BorderBrush="#EB7A24" BorderThickness="2" Margin="0,0,20,15">
+                <StackPanel><TextBlock Text="F12" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Finalizar turno" Foreground="#102A43" FontSize="15" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="8" Tag="FindCustomer" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F9" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Buscar cliente" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="9" Tag="WithdrawCash" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F10" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Retirar dinheiro" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="10" Tag="AddCash" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,20,15">
+                <StackPanel><TextBlock Text="F11" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Adicionar dinheiro" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
+            <Button Grid.Column="7" Tag="EmployeeProfile" Click="FooterAction_Click" Style="{StaticResource FooterActionButtonStyle}" Margin="10,0,0,15">
+                <StackPanel><TextBlock Text="F8" Foreground="#EB7A24" FontWeight="Bold" HorizontalAlignment="Center"/><TextBlock Text="Perfil do funcionário" Foreground="#102A43" FontSize="14" TextAlignment="Center" TextWrapping="Wrap"/></StackPanel>
+            </Button>
         </Grid>
 
     </Grid>
 </Page>
+
+
+
+
+
+
+
