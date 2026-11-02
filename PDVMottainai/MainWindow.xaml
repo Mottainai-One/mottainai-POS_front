@@ -3,15 +3,54 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
         mc:Ignorable="d"
-        Title="" 
+        Title="PDV Mottainai"
         Height="768" Width="1366"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
         WindowStyle="None"
-        >
-
+        ResizeMode="CanResize" Background="#FFF8F1">
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0"
+                            CornerRadius="10" UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+    <Window.Resources>
+        <Style x:Key="ShellControlButton" TargetType="Button">
+            <Setter Property="Width" Value="48"/><Setter Property="Height" Value="40"/>
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="15"/>
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
+                <Border x:Name="Surface" Background="{TemplateBinding Background}">
+                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                </Border>
+                <ControlTemplate.Triggers><Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="Surface" Property="Background" Value="#EB7A24"/>
+                </Trigger></ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+        <Style x:Key="ShellCloseButton" TargetType="Button" BasedOn="{StaticResource ShellControlButton}">
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#C44536"/></Trigger></Style.Triggers>
+        </Style>
+    </Window.Resources>
     <Grid>
-        <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
+        <Grid.RowDefinitions><RowDefinition Height="40"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Grid Grid.Row="0" Background="#0B2033">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="14,0,0,0">
+                <TextBlock Text="PDV Mottainai" Foreground="White" FontSize="12" FontWeight="SemiBold"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                <Button Style="{StaticResource ShellControlButton}" Content="—" ToolTip="Minimizar"
+                        Click="Minimize_Click"/>
+                <Button x:Name="MaximizeButton" Style="{StaticResource ShellControlButton}" Content="❐"
+                        ToolTip="Restaurar" Click="MaximizeRestore_Click"/>
+                <Button Style="{StaticResource ShellCloseButton}" Content="×" ToolTip="Fechar"
+                        Click="CloseWindow_Click"/>
+            </StackPanel>
+        </Grid>
+        <Frame x:Name="MainFrame" Grid.Row="1" NavigationUIVisibility="Hidden"/>
     </Grid>
 </Window>

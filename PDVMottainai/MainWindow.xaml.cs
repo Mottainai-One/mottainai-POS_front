@@ -14,7 +14,7 @@ using PDVMottainai.Views;
 namespace PDVMottainai
 {
     /// <summary>
-    /// Interaction logic for MainWindow.xaml
+    /// Lógica de interação de MainWindow.xaml
     /// </summary>
     public partial class MainWindow : Window
     {
@@ -23,5 +23,16 @@ namespace PDVMottainai
             InitializeComponent();
             MainFrame.Navigate(new Uri("Views/LoginPage.xaml", UriKind.Relative));
         }
+
+        private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+
+        private void MaximizeRestore_Click(object sender, RoutedEventArgs e)
+        {
+            WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
+            MaximizeButton.Content = WindowState == WindowState.Maximized ? "❐" : "□";
+            MaximizeButton.ToolTip = WindowState == WindowState.Maximized ? "Restaurar" : "Maximizar";
+        }
+
+        private void CloseWindow_Click(object sender, RoutedEventArgs e) => Close();
     }
 }
