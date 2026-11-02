@@ -14,8 +14,8 @@ namespace PDVMottainai.Services
         {
             UserId = 1,
             EmployeeId = 101,
-            Email = "operator@example.com",
-            PasswordHash = "1", // Num cenário real, isso estaria criptografado
+            Email = "1",
+            PasswordHash = "1",//Num cenário real, isso estaria criptografado
             LastLogin = DateTime.Now.AddDays(-1),
             Active = true,
             CreatedAt = DateTime.Now.AddMonths(-6),
