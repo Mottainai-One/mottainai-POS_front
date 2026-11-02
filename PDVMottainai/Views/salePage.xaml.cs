@@ -34,6 +34,7 @@ namespace PDVMottainai.Views
         private readonly PosApiClient _api;
         private PDVMottainai.Services.PosShift? _shift;
         private int? _currentSaleId;
+        private int? _currentCustomerId;
         private readonly Dictionary<int, int> _saleItemIds = new();
         private Employee? _currentEmployee;
         private string _storeName = "Não informada";
@@ -83,36 +84,42 @@ namespace PDVMottainai.Views
 
         private async Task InitializePosAsync()
         {
+            if (!await EnsureOpenShiftAsync())
+                formBarcode.IsEnabled = false;
+        }
+
+        private async Task<bool> EnsureOpenShiftAsync()
+        {
+            if (string.Equals(_shift?.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
+                return true;
+
             try
             {
                 _shift = await _api.GetCurrentShiftAsync();
-                if (_shift is null)
+                if (_shift is null || !string.Equals(_shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
                 {
                     var countView = new CashCountView();
                     var confirmed = ShowActionDialog("Open shift", "Count the starting cash before opening this terminal's shift.",
                         "Open shift", countView, () => countView.TryReadCountedCash(out _));
                     if (!confirmed)
-                    {
-                        formBarcode.IsEnabled = false;
-                        return;
-                    }
+                        return false;
 
-                    var opened = await _api.OpenShiftAsync(countView.CountedCash);
-                    _shift = new PDVMottainai.Services.PosShift
-                    {
-                        ShiftId = opened.GetProperty("shiftId").GetInt32(),
-                        Status = "OPEN",
-                        OpenedAt = DateTimeOffset.Now,
-                        OpeningAmount = countView.CountedCash
-                    };
+                    await _api.OpenShiftAsync(countView.CountedCash);
+                    _shift = await _api.GetCurrentShiftAsync();
+                    if (_shift is null || !string.Equals(_shift.Status, "OPEN", StringComparison.OrdinalIgnoreCase))
+                        throw new PosApiException("The API did not confirm an open shift.", System.Net.HttpStatusCode.ServiceUnavailable);
                 }
 
                 _cashBalance = _shift.OpeningAmount;
+                formBarcode.IsEnabled = true;
+                return true;
             }
             catch (Exception exception) when (exception is PosApiException or HttpRequestException)
             {
+                _shift = null;
                 formBarcode.IsEnabled = false;
                 MessageBox.Show($"Could not initialize the POS shift: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
             }
         }
         public void ChangeDateTime()
@@ -190,9 +197,12 @@ namespace PDVMottainai.Views
             _isAddingProduct = true;
             try
             {
+                if (_shiftClosed || !await EnsureOpenShiftAsync())
+                    return;
+
                 if (ScannedProducts.Count == 0 && !_customerDecisionMade)
                 {
-                    var customerPrompt = RequestSaleCustomer("Customer lookup is unavailable in this POS build. Continue without customer identification.");
+                    var customerPrompt = RequestSaleCustomer("Verify a customer's CPF to check Mottainai membership and eligible promotions, or continue without customer identification.");
                     if (customerPrompt == SaleCustomerPromptResult.Cancelled)
                     {
                         formBarcode.SelectAll();
@@ -205,7 +215,7 @@ namespace PDVMottainai.Views
                 if (_currentSaleId is null)
                     await BeginDraftSaleAsync();
 
-                var products = await _api.GetProductsAsync(barcode);
+                var products = await _api.GetProductsAsync(barcode, _currentCustomerId);
                 var apiProduct = products.FirstOrDefault(product =>
                     string.Equals(product.Barcode, barcode, StringComparison.OrdinalIgnoreCase) ||
                     string.Equals(product.Sku, barcode, StringComparison.OrdinalIgnoreCase));
@@ -268,7 +278,9 @@ namespace PDVMottainai.Views
         {
             if (_currentSaleId is not null)
                 return;
-            var sale = await _api.CreateSaleAsync(null);
+            if (!await EnsureOpenShiftAsync())
+                throw new PosApiException("An open shift is required before starting a sale.", System.Net.HttpStatusCode.Conflict);
+            var sale = await _api.CreateSaleAsync(_currentCustomerId);
             _currentSaleId = sale.GetProperty("saleId").GetInt32();
             _saleNumber = _currentSaleId.Value;
             _saleItemIds.Clear();
@@ -342,7 +354,7 @@ namespace PDVMottainai.Views
 
         private SaleCustomerPromptResult RequestSaleCustomer(string subtitle)
         {
-            var customerView = new SaleCustomerView();
+            var customerView = new SaleCustomerView(_api);
             var continueWithoutCpf = false;
             var dialog = new ActionDialogWindow("Cliente e nota fiscal", subtitle,
                 "Continuar venda", customerView, height: 640, cancelText: "Continuar sem CPF")
@@ -355,7 +367,7 @@ namespace PDVMottainai.Views
                     {
                         if (customerView.WantsCpfOnInvoice)
                         {
-                            customerView.ShowFeedback("Para incluir o CPF na nota, informe os 11 números. Caso contrário, marque ‘Não’ ou continue sem CPF.");
+                        customerView.ShowFeedback("Para incluir o CPF na nota, informe um CPF válido com 11 dígitos. Caso contrário, marque ‘Não’ ou continue sem CPF.");
                             return false;
                         }
                         customerView.DiscardIncompleteCpf();
@@ -366,10 +378,11 @@ namespace PDVMottainai.Views
                         return false;
                     }
 
+                    _currentCustomerId = customerView.CustomerId;
                     _customerIsMottainai = customerView.IsMottainaiMember;
                     _customerWantsCpfInvoice = customerView.WantsCpfOnInvoice;
-                    _currentCustomerName = customerView.CustomerName;
-                    _currentCustomerCpf = customerView.CustomerCpf.Length == 11
+                    _currentCustomerName = _customerIsMottainai ? customerView.CustomerName : "Consumidor não identificado";
+                    _currentCustomerCpf = _customerWantsCpfInvoice && customerView.CustomerCpf.Length == 11
                         ? FormatCpf(customerView.CustomerCpf)
                         : string.Empty;
                     _customerDecisionMade = true;
@@ -380,6 +393,7 @@ namespace PDVMottainai.Views
                 CancelAction = () =>
                 {
                     continueWithoutCpf = true;
+                    _currentCustomerId = null;
                     _customerIsMottainai = false;
                     _customerWantsCpfInvoice = false;
                     _currentCustomerName = "Consumidor não identificado";
@@ -582,7 +596,10 @@ namespace PDVMottainai.Views
                     "Continuar", startView))
                 return;
 
-            if (RequestSaleCustomer("Customer lookup is unavailable in this POS build. Continue without customer identification.")
+            if (!await EnsureOpenShiftAsync())
+                return;
+
+            if (RequestSaleCustomer("Verify a customer's CPF to check Mottainai membership and eligible promotions, or continue without customer identification.")
                 == SaleCustomerPromptResult.Cancelled)
                 return;
 

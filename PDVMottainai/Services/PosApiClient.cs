@@ -135,8 +135,8 @@ public sealed class PosApiClient
     public Task<JsonElement> SubmitManagerDecisionAsync(Guid requestId, bool? approved, string? observation, CancellationToken cancellationToken = default) =>
         PostAsync<JsonElement>($"approvals/{requestId:D}/manager-decision", new { approved, observation }, cancellationToken);
 
-    public Task<JsonElement> SearchCustomerAsync(string accountToken, CancellationToken cancellationToken = default) =>
-        PostAsync<JsonElement>("customers/search", new { accountToken }, cancellationToken);
+    public Task<PosCustomer> SearchCustomerAsync(string cpf, CancellationToken cancellationToken = default) =>
+        PostAsync<PosCustomer>("customers/search", new { cpf }, cancellationToken);
 
     public Task<JsonElement> CreateOfflineSessionAsync(string firebaseUid, string terminalCode, int validHours = 12, CancellationToken cancellationToken = default) =>
         PostAsync<JsonElement>("offline-sessions", new { firebaseUid, terminalCode, validHours }, cancellationToken);
@@ -264,6 +264,11 @@ public sealed record PosProduct(
     [property: JsonPropertyName("promotionId")] int? PromotionId,
     [property: JsonPropertyName("active")] bool Active,
     [property: JsonPropertyName("version")] int Version,
+    [property: JsonPropertyName("cachedAt")] DateTimeOffset CachedAt);
+
+public sealed record PosCustomer(
+    [property: JsonPropertyName("customerId")] int CustomerId,
+    [property: JsonPropertyName("displayName")] string DisplayName,
     [property: JsonPropertyName("cachedAt")] DateTimeOffset CachedAt);
 
 public sealed class PosShift
