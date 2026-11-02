@@ -21,8 +21,8 @@ namespace PDVMottainai.Views.Actions
             CustomerName = "Consumidor não identificado";
             CustomerCpf = string.Empty;
             ResultText.Text = digits.Length == 11
-                ? "Customer lookup requires a secure account token. Raw CPF lookup is not supported by the POS API."
-                : "Enter the 11-digit CPF. Customer verification still requires a secure account token.";
+                ? "Customer lookup is unavailable in this POS build. The CPF was not sent."
+                : "Customer lookup is unavailable in this POS build.";
             ResultText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(186, 78, 33));
         }
     }

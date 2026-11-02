@@ -26,4 +26,4 @@ The desktop client connects to the local POS API at `http://127.0.0.1:5097/` by 
 
 The API must also be configured with the Firebase project, terminal, and operational database settings described in the POS API README. Login uses Firebase authentication and then exchanges the selected terminal for a local POS session. Product, shift, draft sale, cash movement, approval, promotion, and sales summary requests use the authenticated POS API.
 
-The API currently exposes checkout as a simulation only. Payment simulations do not persist payments or complete a sale. Customer lookup routes require a secure customer account token; the desktop client does not send raw CPF values to those routes.
+The API currently exposes checkout as a simulation only. Payment simulations do not persist payments or complete a sale. Customer lookup remains unavailable in this desktop build; the POS screen does not send CPF data to the API.

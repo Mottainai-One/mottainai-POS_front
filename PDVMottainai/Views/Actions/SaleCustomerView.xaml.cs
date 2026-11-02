@@ -31,10 +31,8 @@ namespace PDVMottainai.Views.Actions
             CustomerName = "Consumidor não identificado";
 
             CustomerStatusText.Text = CustomerName;
-            MembershipText.Text = digits.Length == 11
-                ? "Customer verification is not available for raw CPF input. Continue without customer identification."
-                : "No customer is attached to this draft. Continue without customer identification.";
-            ValidationText.Text = digits.Length == 11 ? "The POS API requires a secure customer account token." : string.Empty;
+            MembershipText.Text = "Customer lookup is unavailable in this POS build. Continue without customer identification.";
+            ValidationText.Text = digits.Length == 11 ? "Customer lookup is unavailable in this POS build." : string.Empty;
             CustomerStatusText.Foreground = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(102, 119, 132));
         }
     }

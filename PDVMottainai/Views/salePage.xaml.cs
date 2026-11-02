@@ -192,7 +192,7 @@ namespace PDVMottainai.Views
             {
                 if (ScannedProducts.Count == 0 && !_customerDecisionMade)
                 {
-                    var customerPrompt = RequestSaleCustomer("Customer verification from a raw CPF is not available. Continue without customer identification.");
+                    var customerPrompt = RequestSaleCustomer("Customer lookup is unavailable in this POS build. Continue without customer identification.");
                     if (customerPrompt == SaleCustomerPromptResult.Cancelled)
                     {
                         formBarcode.SelectAll();
@@ -582,7 +582,7 @@ namespace PDVMottainai.Views
                     "Continuar", startView))
                 return;
 
-            if (RequestSaleCustomer("Customer verification from a raw CPF is not available. Continue without customer identification.")
+            if (RequestSaleCustomer("Customer lookup is unavailable in this POS build. Continue without customer identification.")
                 == SaleCustomerPromptResult.Cancelled)
                 return;
 
@@ -894,7 +894,7 @@ namespace PDVMottainai.Views
 
         private void FindCustomer()
         {
-            MessageBox.Show("Customer lookup requires an account token from the customer application. The POS API does not accept a raw CPF for this route.",
+            MessageBox.Show("Customer lookup is unavailable in this POS build.",
                 "Customer lookup unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 

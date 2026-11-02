@@ -62,8 +62,8 @@ public sealed class PosApiClient
     public Task<JsonElement> GetCurrentOperatorAsync(CancellationToken cancellationToken = default) =>
         GetAsync<JsonElement>("auth/me", cancellationToken);
 
-    public Task<IReadOnlyList<PosProduct>> GetProductsAsync(string? search, CancellationToken cancellationToken = default) =>
-        GetAsync<IReadOnlyList<PosProduct>>($"products?query={Uri.EscapeDataString(search ?? string.Empty)}", cancellationToken);
+    public Task<IReadOnlyList<PosProduct>> GetProductsAsync(string? search, int? customerId = null, CancellationToken cancellationToken = default) =>
+        GetAsync<IReadOnlyList<PosProduct>>($"products?query={Uri.EscapeDataString(search ?? string.Empty)}{(customerId is > 0 ? $"&customerId={customerId.Value}" : string.Empty)}", cancellationToken);
 
     public Task<PosProduct> GetProductAsync(int productId, CancellationToken cancellationToken = default) =>
         GetAsync<PosProduct>($"products/{productId}", cancellationToken);
@@ -137,9 +137,6 @@ public sealed class PosApiClient
 
     public Task<JsonElement> SearchCustomerAsync(string accountToken, CancellationToken cancellationToken = default) =>
         PostAsync<JsonElement>("customers/search", new { accountToken }, cancellationToken);
-
-    public Task<JsonElement> SearchCustomerByCpfAsync(string cpfToken, CancellationToken cancellationToken = default) =>
-        PostAsync<JsonElement>("customers/search-by-cpf", new { cpfToken }, cancellationToken);
 
     public Task<JsonElement> CreateOfflineSessionAsync(string firebaseUid, string terminalCode, int validHours = 12, CancellationToken cancellationToken = default) =>
         PostAsync<JsonElement>("offline-sessions", new { firebaseUid, terminalCode, validHours }, cancellationToken);
