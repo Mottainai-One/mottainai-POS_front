@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
+using System.Net.Http;
 using System.Text;
+using System.Text.Json;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
@@ -29,6 +31,10 @@ namespace PDVMottainai.Views
         private DispatcherTimer? _connectivityTimer;
         private bool _connectivityCheckRunning;
         private readonly DateTime _shiftStartedAt = DateTime.Now;
+        private readonly PosApiClient _api;
+        private PDVMottainai.Services.PosShift? _shift;
+        private int? _currentSaleId;
+        private readonly Dictionary<int, int> _saleItemIds = new();
         private Employee? _currentEmployee;
         private string _storeName = "Não informada";
         private readonly List<CompletedSale> _salesHistory = new();
@@ -40,6 +46,7 @@ namespace PDVMottainai.Views
         private bool _customerIsMottainai;
         private bool _customerWantsCpfInvoice;
         private bool _customerDecisionMade;
+        private bool _isAddingProduct;
         private string _currentCustomerName = "Consumidor não identificado";
         private string _currentCustomerCpf = string.Empty;
         private int _saleNumber = 1;
@@ -52,50 +59,61 @@ namespace PDVMottainai.Views
 
         public ObservableCollection<ScannedProductLine> ScannedProducts { get; } = new();
 
-        public salePage()
+        public salePage(PosApiClient api, PosSession session)
         {
-            
+            var operatorProfile = session.OperatorProfile ?? throw new ArgumentException("The API session does not include an operator profile.", nameof(session));
+            _api = api;
+            _storeName = operatorProfile.StoreName;
+            _currentEmployee = new Employee
+            {
+                EmployeeId = operatorProfile.EmployeeId,
+                StoreId = operatorProfile.StoreId,
+                Name = operatorProfile.Name
+            };
             InitializeComponent();
             SetSaleStatus("Venda em andamento");
             DataContext = this;
             scannedProductsList.ItemsSource = ScannedProducts;
             UpdateSaleTotals();
             ChangeDateTime();
-           
-            
-        }
-        public salePage(string store, string emailUser)
-        {
-            InitializeComponent();
-            SetSaleStatus("Venda em andamento");
-            DataContext = this;
-            scannedProductsList.ItemsSource = ScannedProducts;
-            UpdateSaleTotals();
-
-            int numSale = 0;
-            TrendingSaleInformations(numSale, store, emailUser);
+            txtStore.Text = $"Loja: {_storeName}";
+            txtNumSale.Text = "—";
+            Loaded += async (_, _) => await InitializePosAsync();
         }
 
-        public void TrendingSaleInformations(int numSale, string storeSelected, string emailUser)
+        private async Task InitializePosAsync()
         {
-            // Número da venda do turno
-            numSale += 1;
-            txtNumSale.Text = numSale.ToString();
+            try
+            {
+                _shift = await _api.GetCurrentShiftAsync();
+                if (_shift is null)
+                {
+                    var countView = new CashCountView();
+                    var confirmed = ShowActionDialog("Open shift", "Count the starting cash before opening this terminal's shift.",
+                        "Open shift", countView, () => countView.TryReadCountedCash(out _));
+                    if (!confirmed)
+                    {
+                        formBarcode.IsEnabled = false;
+                        return;
+                    }
 
-            // Data e hora
-            ChangeDateTime();
+                    var opened = await _api.OpenShiftAsync(countView.CountedCash);
+                    _shift = new PDVMottainai.Services.PosShift
+                    {
+                        ShiftId = opened.GetProperty("shiftId").GetInt32(),
+                        Status = "OPEN",
+                        OpenedAt = DateTimeOffset.Now,
+                        OpeningAmount = countView.CountedCash
+                    };
+                }
 
-            // Loja
-            _storeName = storeSelected;
-            txtStore.Text = "Loja: " + storeSelected;
-
-            var loggedInUser = MockApiService.Users.FirstOrDefault(user =>
-                string.Equals(user.Email, emailUser, StringComparison.OrdinalIgnoreCase));
-            _currentEmployee = loggedInUser is null
-                ? MockApiService.Employees.FirstOrDefault(employee =>
-                    string.Equals(employee.Email, emailUser, StringComparison.OrdinalIgnoreCase))
-                : MockApiService.Employees.FirstOrDefault(employee => employee.EmployeeId == loggedInUser.EmployeeId);
-
+                _cashBalance = _shift.OpeningAmount;
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                formBarcode.IsEnabled = false;
+                MessageBox.Show($"Could not initialize the POS shift: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
         public void ChangeDateTime()
         {
@@ -163,56 +181,98 @@ namespace PDVMottainai.Views
                 Clipboard.SetText(value.Trim());
         }
 
-        private void AddProductFromBarcode()
+        private async void AddProductFromBarcode()
         {
             var barcode = formBarcode.Text.Trim();
-            if (string.IsNullOrWhiteSpace(barcode))
+            if (string.IsNullOrWhiteSpace(barcode) || _isAddingProduct)
                 return;
 
-            var productFound = MockApiService.Products.FirstOrDefault(
-                product => product.Active &&
-                           string.Equals(product.Barcode?.Trim(), barcode, StringComparison.OrdinalIgnoreCase));
-
-            if (productFound == null)
+            _isAddingProduct = true;
+            try
             {
-                txtProductName.Text = "-";
-                txtBarCode.Text = "-";
-                txtSkuProduct.Text = "-";
-                MessageBox.Show("Produto não encontrado. Confira o código de barras.", "Produto não encontrado",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
-                formBarcode.SelectAll();
-                formBarcode.Focus();
-                return;
-            }
-
-            if (ScannedProducts.Count == 0 && !_customerDecisionMade)
-            {
-                var customerPrompt = RequestSaleCustomer("Antes de registrar o primeiro item, informe o CPF do cliente ou escolha continuar sem CPF.");
-                if (customerPrompt == SaleCustomerPromptResult.Cancelled)
+                if (ScannedProducts.Count == 0 && !_customerDecisionMade)
                 {
+                    var customerPrompt = RequestSaleCustomer("Customer lookup is unavailable in this POS build. Continue without customer identification.");
+                    if (customerPrompt == SaleCustomerPromptResult.Cancelled)
+                    {
+                        formBarcode.SelectAll();
+                        formBarcode.Focus();
+                        return;
+                    }
+                    SetSaleStatus("Sale in progress");
+                }
+
+                if (_currentSaleId is null)
+                    await BeginDraftSaleAsync();
+
+                var products = await _api.GetProductsAsync(barcode);
+                var apiProduct = products.FirstOrDefault(product =>
+                    string.Equals(product.Barcode, barcode, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(product.Sku, barcode, StringComparison.OrdinalIgnoreCase));
+                if (apiProduct is null)
+                {
+                    txtProductName.Text = "-";
+                    txtBarCode.Text = "-";
+                    txtSkuProduct.Text = "-";
+                    MessageBox.Show("Product not found. Check the barcode and try again.", "Product not found",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
                     formBarcode.SelectAll();
                     formBarcode.Focus();
                     return;
                 }
-                SetSaleStatus("Venda em andamento");
-                txtNumSale.Text = _saleNumber.ToString();
+
+                var item = await _api.AddSaleItemAsync(_currentSaleId!.Value, apiProduct.ProductId, 1);
+                var itemId = item.GetProperty("itemId").GetInt32();
+                _saleItemIds[apiProduct.ProductId] = itemId;
+                var unitPrice = item.GetProperty("unitPrice").GetDecimal();
+                var productFound = new Product
+                {
+                    ProductId = apiProduct.ProductId,
+                    Sku = apiProduct.Sku,
+                    Barcode = apiProduct.Barcode ?? string.Empty,
+                    Name = apiProduct.Name,
+                    UnitMeasure = apiProduct.UnitMeasure,
+                    RegularPrice = unitPrice,
+                    DiscountPrice = unitPrice,
+                    Active = apiProduct.Active,
+                    Version = apiProduct.Version
+                };
+
+                txtProductName.Text = productFound.Name;
+                txtBarCode.Text = productFound.Barcode;
+                txtSkuProduct.Text = productFound.Sku;
+
+                var existingLine = ScannedProducts.FirstOrDefault(line => line.Product.ProductId == productFound.ProductId);
+                if (existingLine is null)
+                    ScannedProducts.Add(new ScannedProductLine(productFound));
+                else
+                    existingLine.Quantity++;
+
+                UpdateSaleTotals();
+                formBarcode.Clear();
+                formBarcode.Focus();
             }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not add the item: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+                formBarcode.SelectAll();
+                formBarcode.Focus();
+            }
+            finally
+            {
+                _isAddingProduct = false;
+            }
+        }
 
-            txtProductName.Text = productFound.Name;
-            txtBarCode.Text = productFound.Barcode;
-            txtSkuProduct.Text = productFound.Sku;
-
-            var existingLine = ScannedProducts.FirstOrDefault(
-                line => line.Product.ProductId == productFound.ProductId);
-
-            if (existingLine == null)
-                ScannedProducts.Add(new ScannedProductLine(productFound, _customerIsMottainai));
-            else
-                existingLine.Quantity++;
-
-            UpdateSaleTotals();
-            formBarcode.Clear();
-            formBarcode.Focus();
+        private async Task BeginDraftSaleAsync()
+        {
+            if (_currentSaleId is not null)
+                return;
+            var sale = await _api.CreateSaleAsync(null);
+            _currentSaleId = sale.GetProperty("saleId").GetInt32();
+            _saleNumber = _currentSaleId.Value;
+            _saleItemIds.Clear();
+            txtNumSale.Text = _saleNumber.ToString();
         }
 
         private (decimal Regular, decimal Discount, decimal Earned) CalculateSaleTotals()
@@ -461,7 +521,7 @@ namespace PDVMottainai.Views
                     break;
                 case "ConsultProduct":
                     ShowActionDialog("Consultar produto", "Pesquise e selecione um produto para ver seus detalhes.",
-                        "Concluir", new ConsultProductView(), fullScreen: true);
+                        "Concluir", new ConsultProductView(_api), fullScreen: true);
                     break;
                 case "FinalizeSale":
                     FinalizeSale();
@@ -500,7 +560,7 @@ namespace PDVMottainai.Views
                 "Fechar perfil", profile, fullScreen: true);
         }
 
-        private void StartSale()
+        private async void StartSale()
         {
             if (_shiftClosed)
             {
@@ -510,16 +570,25 @@ namespace PDVMottainai.Views
                 return;
             }
 
+            if (_currentSaleId is not null)
+            {
+                MessageBox.Show("This API does not provide a sale completion or cancellation route. The current draft must remain open until an authorized workflow is available.",
+                    "Draft sale still open", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
             var startView = new StartSaleView(ScannedProducts.Count > 0);
             if (!ShowActionDialog("Iniciar venda", "Abra uma nova venda no terminal.",
                     "Continuar", startView))
                 return;
 
-            if (RequestSaleCustomer("Informe o CPF para verificar as promoções ou escolha continuar sem CPF.")
+            if (RequestSaleCustomer("Customer lookup is unavailable in this POS build. Continue without customer identification.")
                 == SaleCustomerPromptResult.Cancelled)
                 return;
 
             ScannedProducts.Clear();
+            _currentSaleId = null;
+            _saleItemIds.Clear();
             txtProductName.Text = "-";
             txtBarCode.Text = "-";
             txtSkuProduct.Text = "-";
@@ -529,138 +598,187 @@ namespace PDVMottainai.Views
             formBarcode.Clear();
             UpdateSaleTotals();
 
+            try
+            {
+                await BeginDraftSaleAsync();
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not start the sale: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+
             // ShowDialog desativa a janela principal. Só devolva o foco ao leitor
             // depois que o popup fechar; focar dentro do callback deixa o PDV sem cursor.
-            Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+            await Dispatcher.InvokeAsync(() =>
             {
                 formBarcode.Focus();
                 Keyboard.Focus(formBarcode);
-            });
+            }, System.Windows.Threading.DispatcherPriority.Input);
         }
 
-        private void CancelSale()
+        private async void CancelSale()
         {
             var canCancel = ScannedProducts.Count > 0;
-            var view = new CancelSaleView(canCancel);
-            ShowActionDialog("Cancelar venda",
-                canCancel ? "Revise o impacto antes de continuar." : "Não há itens na venda atual.",
-                canCancel ? "Cancelar venda" : "Entendi", view, () =>
+            if (!canCancel || _currentSaleId is null)
+            {
+                MessageBox.Show("There is no active sale to cancel.", "Cancel sale", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+            if (MessageBox.Show("The API records cancellation requests for manager approval. The draft will remain open until it is approved.",
+                    "Request sale cancellation", MessageBoxButton.OKCancel, MessageBoxImage.Warning) != MessageBoxResult.OK)
+                return;
+
+            try
+            {
+                var response = await _api.CreateApprovalAsync(new
                 {
-                    if (canCancel)
-                    {
-                        ScannedProducts.Clear();
-                        SetSaleStatus("Venda cancelada");
-                        _customerIsMottainai = false;
-                        _customerWantsCpfInvoice = false;
-                        _customerDecisionMade = false;
-                        _currentCustomerName = "Consumidor não identificado";
-                        _currentCustomerCpf = string.Empty;
-                        UpdateCustomerCard();
-                        UpdateSaleTotals();
-                    }
-                    formBarcode.Focus();
-                    return true;
+                    saleId = _currentSaleId.Value,
+                    saleItemId = (int?)null,
+                    requestType = "CANCEL_PURCHASE",
+                    reason = "Cancellation requested by the operator.",
+                    requestedAmount = (decimal?)null,
+                    discountPercent = (decimal?)null,
+                    idempotencyKey = Guid.NewGuid()
                 });
+                MessageBox.Show($"Cancellation request {response.GetProperty("requestId").GetString()} was submitted for approval. The sale remains open.",
+                    "Approval requested", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not request cancellation: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void FinalizeSale()
+        private async void FinalizeSale()
         {
             var totals = CalculateSaleTotals();
             var view = new FinalizeSaleView(ScannedProducts, totals.Discount, _currentCustomerName,
                 _currentCustomerCpf, _customerWantsCpfInvoice, _saleNumber);
             var hasItems = ScannedProducts.Count > 0;
-            ShowActionDialog("Finalizar venda",
-                hasItems ? "Confira os itens e divida o pagamento entre um ou mais meios." : "Adicione produtos antes de finalizar.",
-                hasItems ? "Finalizar venda" : "Voltar à venda", view, hasItems ? () =>
-                {
-                    if (!view.IsPaymentComplete)
-                    {
-                        view.ShowFeedback($"Adicione pagamentos para completar {view.Remaining.ToString("C", CultureInfo.GetCultureInfo("pt-BR"))}.");
-                        return false;
-                    }
+            if (!ShowActionDialog("Simulate checkout",
+                    hasItems ? "The API only simulates payment and will keep this sale as a draft." : "Add products before checkout.",
+                    hasItems ? "Simulate payment" : "Return to sale", view, fullScreen: true))
+                return;
 
-                    var itemCount = ScannedProducts.Sum(line => line.Quantity);
-                    var paymentRecords = view.GetPaymentRecords().ToList();
-                    _salesHistory.Add(new CompletedSale
+            if (!hasItems || _currentSaleId is null)
+                return;
+            if (!view.IsPaymentComplete)
+            {
+                MessageBox.Show($"Add payments to cover {view.Remaining.ToString("C", CultureInfo.GetCultureInfo("pt-BR"))}.", "Payment required", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                var payments = view.GetPaymentRecords().Select(payment => new
+                {
+                    paymentMethod = NormalizeForComparison(payment.Method) switch
                     {
-                        SaleNumber = _saleNumber++,
-                        SaleDate = DateTime.Now,
-                        CustomerName = _currentCustomerName,
-                        CustomerCpf = _currentCustomerCpf,
-                        IsMottainaiMember = _customerIsMottainai,
-                        CpfOnInvoice = _customerWantsCpfInvoice && !string.IsNullOrEmpty(_currentCustomerCpf),
-                        ItemCount = itemCount,
-                        RegularTotal = totals.Regular,
-                        DiscountTotal = totals.Discount,
-                        Earned = totals.Earned,
-                        Items = ScannedProducts.Select(line => new CompletedSaleItem
-                        {
-                            Name = line.Product.Name,
-                            Sku = line.Product.Sku,
-                            Quantity = line.Quantity,
-                            RegularUnitPrice = line.RegularUnitPrice,
-                            AppliedUnitPrice = line.AppliedUnitPrice,
-                            LineTotal = line.LineTotal
-                        }).ToList(),
-                        Payments = paymentRecords
-                    });
-                    _cashBalance += paymentRecords.Where(payment => IsCashPayment(payment.Method)).Sum(payment => payment.Amount);
-                    ScannedProducts.Clear();
-                    SetSaleStatus("Venda finalizada");
-                    _customerIsMottainai = false;
-                    _customerWantsCpfInvoice = false;
-                    _customerDecisionMade = false;
-                    _currentCustomerName = "Consumidor não identificado";
-                    _currentCustomerCpf = string.Empty;
-                    UpdateCustomerCard();
-                    UpdateSaleTotals();
-                    formBarcode.Focus();
-                    return true;
-                } : null, fullScreen: true);
+                        "DINHEIRO" => "CASH",
+                        "PIX" => "PIX",
+                        "CARTAO DE DEBITO" => "DEBIT_CARD",
+                        "CARTAO DE CREDITO" => "CREDIT_CARD",
+                        _ => payment.Method
+                    },
+                    payment.Amount
+                }).ToArray();
+                var simulation = await _api.SimulateSaleCompletionAsync(_currentSaleId.Value, new { payments });
+                MessageBox.Show($"API simulation succeeded for {simulation.GetProperty("totalAmount").GetDecimal().ToString("C", CultureInfo.GetCultureInfo("pt-BR"))}. The sale is still a draft; no payment was processed.",
+                    "Checkout simulation", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not simulate checkout: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void RemoveSelectedProduct()
+        private async void RemoveSelectedProduct()
         {
             var view = new RemoveProductView(ScannedProducts);
             var hasItems = ScannedProducts.Count > 0;
-            ShowActionDialog("Excluir produto", "Selecione uma linha para remover uma unidade do item.",
-                hasItems ? "Excluir unidade" : "Entendi", view, () =>
+            if (!ShowActionDialog("Remove product", hasItems ? "Select an item to reduce its quantity." : "There are no items to remove.",
+                    hasItems ? "Remove one unit" : "Close", view))
+                return;
+            if (!hasItems || view.SelectedLine is not { } selectedLine || _currentSaleId is null)
+                return;
+
+            try
+            {
+                if (selectedLine.Quantity > 1)
                 {
-                    if (!hasItems)
-                        return true;
-                    if (view.SelectedLine is not { } selectedLine)
-                    {
-                        view.ShowFeedback("Selecione um item da lista para continuar.");
-                        return false;
-                    }
-
-                    if (selectedLine.Quantity > 1)
-                        selectedLine.Quantity--;
-                    else
-                        ScannedProducts.Remove(selectedLine);
+                    var newQuantity = selectedLine.Quantity - 1;
+                    await _api.ChangeSaleItemAsync(_currentSaleId.Value, _saleItemIds[selectedLine.Product.ProductId], newQuantity);
+                    selectedLine.Quantity = newQuantity;
                     UpdateSaleTotals();
-                    return true;
+                    return;
+                }
+
+                var approval = await _api.CreateApprovalAsync(new
+                {
+                    saleId = _currentSaleId.Value,
+                    saleItemId = _saleItemIds[selectedLine.Product.ProductId],
+                    requestType = "CANCEL_PRODUCT",
+                    reason = "Item removal requested by the operator.",
+                    requestedAmount = (decimal?)null,
+                    discountPercent = (decimal?)null,
+                    idempotencyKey = Guid.NewGuid()
                 });
+                MessageBox.Show($"Removal request {approval.GetProperty("requestId").GetString()} was submitted for manager approval. The item remains in the draft.",
+                    "Approval requested", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException or KeyNotFoundException)
+            {
+                MessageBox.Show($"Could not update the sale item: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void ShowSalesHistory()
+        private async void ShowSalesHistory()
         {
-            ShowActionDialog("Histórico de vendas", "Selecione uma venda para consultar todos os detalhes.",
-                "Fechar", new SalesHistoryView(_salesHistory), fullScreen: true);
+            try
+            {
+                var response = await _api.GetSalesAsync();
+                var history = response.EnumerateArray().Select(sale => new CompletedSale
+                {
+                    SaleNumber = sale.GetProperty("saleId").GetInt32(),
+                    SaleDate = DateTime.TryParse(sale.GetProperty("saleDate").GetString(), out var date) ? date : DateTime.MinValue,
+                    Status = sale.TryGetProperty("status", out var status) ? status.GetString() ?? string.Empty : string.Empty,
+                    CustomerName = "Registro da API",
+                    DiscountTotal = sale.TryGetProperty("totalAmount", out var total) && total.ValueKind == JsonValueKind.Number ? total.GetDecimal() : 0m,
+                    RegularTotal = sale.TryGetProperty("totalAmount", out total) && total.ValueKind == JsonValueKind.Number ? total.GetDecimal() : 0m
+                }).ToList();
+                ShowActionDialog("Sales from POS API", "The API currently returns sale summary records.",
+                    "Close", new SalesHistoryView(history), fullScreen: true);
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not load sales: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void ShowPromotions()
+        private async void ShowPromotions()
         {
-            var promotions = MockApiService.Products
-                .Where(product => product.Active && product.RegularPrice.HasValue &&
-                                  product.DiscountPrice.HasValue &&
-                                  product.DiscountPrice.Value < product.RegularPrice.Value)
-                .ToList();
-            ShowActionDialog("Promoções", "Consulte todas as ofertas ativas no catálogo.",
-                "Fechar", new PromotionsView(promotions), fullScreen: true);
+            try
+            {
+                var response = await _api.GetPromotionsAsync();
+                var promotions = response.EnumerateArray().Select(promotion => new Product
+                {
+                    ProductId = promotion.GetProperty("productId").GetInt32(),
+                    Name = promotion.GetProperty("productName").GetString() ?? string.Empty,
+                    Sku = promotion.GetProperty("sku").GetString() ?? string.Empty,
+                    RegularPrice = promotion.GetProperty("normalPrice").GetDecimal(),
+                    DiscountPrice = promotion.GetProperty("promotionalPrice").GetDecimal()
+                }).ToList();
+                ShowActionDialog("Promotions", "Active promotions from the POS API.",
+                    "Close", new PromotionsView(promotions), fullScreen: true);
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not load promotions: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
-        private void FinalizeShift()
+        private async void FinalizeShift()
         {
             if (_shiftClosed)
             {
@@ -678,35 +796,29 @@ namespace PDVMottainai.Views
                 return;
             }
 
-            var countView = new CashCountView();
-            var countConfirmed = ShowActionDialog("Contagem do caixa",
-                "Informe o valor contado fisicamente. O saldo esperado ficará oculto até a conferência.",
-                "Conferir caixa", countView, () =>
-                {
-                    if (!countView.TryReadCountedCash(out _))
-                        return false;
-                    return true;
-                });
-            if (!countConfirmed)
+            if (_shift is null)
                 return;
 
-            var summary = BuildShiftClosingSummary(countView.CountedCash);
-            var summaryView = new FinalizeShiftView(summary);
-            var turnFinished = ShowActionDialog("Resumo do turno",
-                "Confira as vendas, formas de pagamento e a conferência do caixa antes de encerrar.",
-                "Finalizar turno", summaryView, () =>
-                {
-                    _shiftClosed = true;
-                    formBarcode.IsEnabled = false;
-                    txtNum.Text = "Turno finalizado";
-                    return true;
-                }, fullScreen: true);
+            var countView = new CashCountView();
+            if (!ShowActionDialog("Count cash", "Enter the physical cash count before closing this shift.",
+                    "Close shift", countView, () => countView.TryReadCountedCash(out _)))
+                return;
 
-            if (turnFinished)
+            try
             {
+                await _api.CloseShiftAsync(_shift.ShiftId, countView.CountedCash);
+                _shiftClosed = true;
+                formBarcode.IsEnabled = false;
+                txtNum.Text = "Shift closed";
+                MessageBox.Show("The shift was closed by the POS API.", "Shift closed", MessageBoxButton.OK, MessageBoxImage.Information);
+                await _api.SignOutAsync();
                 _timer?.Stop();
                 _connectivityTimer?.Stop();
                 NavigationService?.Navigate(new LoginPage());
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not close the shift: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -782,74 +894,59 @@ namespace PDVMottainai.Views
 
         private void FindCustomer()
         {
-            var view = new FindCustomerView();
-            ShowActionDialog("Buscar cliente", "Pesquise pelo CPF para vincular um cadastro à venda.",
-                "Vincular cliente", view, () =>
-                {
-                    if (!view.CustomerFound)
-                    {
-                        view.ShowFeedback("Busque um CPF válido com 11 números antes de continuar.");
-                        return false;
-                    }
-
-                    _currentCustomerName = view.CustomerName;
-                    _currentCustomerCpf = view.CustomerCpf;
-                    _customerIsMottainai = view.IsMottainaiMember;
-                    _customerDecisionMade = true;
-                    UpdateCustomerCard();
-                    UpdateSaleTotals();
-                    return true;
-                });
+            MessageBox.Show("Customer lookup is unavailable in this POS build.",
+                "Customer lookup unavailable", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
-        private void RegisterCashMovement(bool isAddition)
+        private async void RegisterCashMovement(bool isAddition)
         {
             var title = isAddition ? "Adicionar dinheiro" : "Retirar dinheiro";
             var culture = CultureInfo.GetCultureInfo("pt-BR");
+            string amountText;
+            string reason;
+            bool confirmed;
             if (isAddition)
             {
                 var view = new AddCashView(_cashBalance.ToString("C", culture));
-                ShowActionDialog(title, "Registre uma entrada de numerário no caixa.",
-                    "Registrar entrada", view, () => ApplyCashMovement(view.AmountText, view.Reason, true, view.ShowFeedback, culture));
+                confirmed = ShowActionDialog(title, "Registre uma entrada de numerário no caixa.", "Registrar entrada", view);
+                amountText = view.AmountText;
+                reason = view.Reason;
             }
             else
             {
                 var view = new WithdrawCashView(_cashBalance.ToString("C", culture));
-                ShowActionDialog(title, "Registre uma retirada de numerário do caixa.",
-                    "Registrar retirada", view, () => ApplyCashMovement(view.AmountText, view.Reason, false, view.ShowFeedback, culture));
+                confirmed = ShowActionDialog(title, "Registre uma retirada de numerário do caixa.", "Registrar retirada", view);
+                amountText = view.AmountText;
+                reason = view.Reason;
             }
-        }
 
-        private bool ApplyCashMovement(string amountText, string reason, bool isAddition,
-            Action<string> showFeedback, CultureInfo culture)
-        {
+            if (!confirmed)
+                return;
+
             if (!decimal.TryParse(amountText, NumberStyles.Currency, culture, out var amount) &&
                 !decimal.TryParse(amountText, NumberStyles.Number, CultureInfo.InvariantCulture, out amount))
             {
-                showFeedback("Informe um valor válido, como 25,00.");
-                return false;
+                MessageBox.Show("Enter a valid amount.", title, MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
-            if (amount <= 0)
+            if (amount <= 0 || (!isAddition && amount > _cashBalance) || string.IsNullOrWhiteSpace(reason) || _shift is null)
             {
-                showFeedback("O valor precisa ser maior que zero.");
-                return false;
-            }
-            if (!isAddition && amount > _cashBalance)
-            {
-                showFeedback($"Saldo insuficiente. Saldo registrado: {_cashBalance.ToString("C", culture)}.");
-                return false;
+                MessageBox.Show("Enter a positive amount and a reason. Withdrawals cannot exceed the recorded cash balance.", title,
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
             }
 
-            _cashBalance += isAddition ? amount : -amount;
-            if (isAddition)
-                _cashAddedTotal += amount;
-            else
-                _cashWithdrawnTotal += amount;
-            var movementName = isAddition ? "Entrada" : "Retirada";
-            var reasonSuffix = string.IsNullOrWhiteSpace(reason) ? string.Empty : $" · {reason}";
-            _cashMovements.Add($"{DateTime.Now:HH:mm} · {movementName}: {amount.ToString("C", culture)}{reasonSuffix}");
-            showFeedback($"Movimentação registrada. Novo saldo: {_cashBalance.ToString("C", culture)}.");
-            return true;
+            try
+            {
+                await _api.CreateCashMovementAsync(_shift.ShiftId, amount, reason, withdrawal: !isAddition);
+                _cashBalance += isAddition ? amount : -amount;
+                if (isAddition) _cashAddedTotal += amount; else _cashWithdrawnTotal += amount;
+                _cashMovements.Add($"{DateTime.Now:HH:mm} · {(isAddition ? "Entrada" : "Retirada")}: {amount.ToString("C", culture)} · {reason}");
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not save the cash movement: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private bool ShowActionDialog(string title, string subtitle, string primaryText,

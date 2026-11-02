@@ -141,7 +141,7 @@
                         <Border Background="#F8FAFC" BorderBrush="#DCE6EB" BorderThickness="1"
                                 CornerRadius="10" Padding="12,4">
                             <TextBox x:Name="txtEmail" Style="{StaticResource InputTextBox}"
-                                     TextChanged="txtEmail_TextChanged"/>
+                                     TextChanged="CredentialsChanged"/>
                         </Border>
 
                         <TextBlock Text="Senha" FontSize="12" FontWeight="Bold"
@@ -151,9 +151,9 @@
                             <Grid>
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                 <PasswordBox x:Name="txtPasswordClose" Style="{StaticResource InputPasswordBox}"
-                                             PasswordChanged="txtPasswordClose_PasswordChanged"/>
+                                             PasswordChanged="CredentialsChanged"/>
                                 <TextBox x:Name="txtPasswordOpen" Grid.Column="0" Style="{StaticResource InputTextBox}"
-                                         Visibility="Collapsed"/>
+                                         Visibility="Collapsed" TextChanged="CredentialsChanged"/>
                                 <Button Grid.Column="1" Style="{StaticResource BrandLinkButton}"
                                         Click="TogglePassword_Click" ToolTip="Mostrar ou ocultar senha">
                                     <Image x:Name="imgEye" Source="/IMG/eyeCloseIcon.png" Width="22" Height="22" Stretch="Uniform"/>
@@ -175,7 +175,7 @@
                                 <TextBlock Text="Terminal" FontSize="12" FontWeight="Bold" Foreground="#34495A" Margin="0,0,0,7"/>
                                 <Border Background="#F8FAFC" BorderBrush="#DCE6EB" BorderThickness="1" CornerRadius="10" Padding="10,2">
                                     <ComboBox x:Name="terminal" Style="{StaticResource StoreComboBox}"
-                                              DisplayMemberPath="Name" SelectedValuePath="StoreId"/>
+                                              DisplayMemberPath="Name" SelectedValuePath="TerminalCode"/>
                                 </Border>
                             </StackPanel>
                         </Grid>

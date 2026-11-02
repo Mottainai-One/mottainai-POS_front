@@ -15,7 +15,7 @@
         <Border Grid.Row="2" Background="#EAF1F4" CornerRadius="12" Padding="18" Margin="0,18,0,0">
             <StackPanel VerticalAlignment="Center">
                 <TextBlock Text="RESULTADO DA BUSCA" Foreground="#667784" FontSize="11" FontWeight="Bold"/>
-                <TextBlock x:Name="ResultText" Text="Digite o CPF para buscar no catálogo de demonstração."
+                <TextBlock x:Name="ResultText" Text="Customer lookup requires a secure account token from the customer application."
                            Foreground="#102A43" FontSize="17" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,8,0,0"/>
             </StackPanel>
         </Border>

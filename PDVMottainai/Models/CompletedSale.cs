@@ -6,6 +6,7 @@ namespace PDVMottainai.Models
     public class CompletedSale
     {
         public int SaleNumber { get; init; }
+        public string Status { get; init; } = string.Empty;
         public DateTime SaleDate { get; init; } = DateTime.Now;
         public string CustomerName { get; init; } = "Consumidor não identificado";
         public string CustomerCpf { get; init; } = string.Empty;
