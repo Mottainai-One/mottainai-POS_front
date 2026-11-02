@@ -6,8 +6,8 @@
         <Grid Margin="4,0,4,16">
             <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
             <StackPanel>
-                <TextBlock Text="Vendas finalizadas" FontSize="22" FontWeight="Bold" Foreground="#102A43"/>
-                <TextBlock Text="Selecione uma venda para consultar cliente, itens e pagamentos."
+                <TextBlock Text="Registros de vendas" FontSize="22" FontWeight="Bold" Foreground="#102A43"/>
+                <TextBlock Text="A API retorna o resumo e o status dos registros disponíveis."
                            Foreground="#667784" Margin="0,3,0,0"/>
             </StackPanel>
             <Border Grid.Column="1" Background="#EAF1F4" CornerRadius="9" Padding="14,8">
@@ -86,7 +86,7 @@
                     </StackPanel>
                 </Grid>
             </Border>
-            <TextBlock x:Name="EmptyStateText" Grid.Column="0" Text="Nenhuma venda finalizada nesta sessão."
+            <TextBlock x:Name="EmptyStateText" Grid.Column="0" Text="Nenhum registro de venda retornado pela API."
                        Foreground="#82919A" FontSize="15" HorizontalAlignment="Center"
                        VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
         </Grid>

@@ -1,6 +1,8 @@
 using PDVMottainai.Models;
 using PDVMottainai.Services;
 using System.Collections.ObjectModel;
+using System.Net.Http;
+using System.Windows;
 using System.Windows.Controls;
 
 namespace PDVMottainai.Views.Actions
@@ -8,15 +10,17 @@ namespace PDVMottainai.Views.Actions
     public partial class ConsultProductView : UserControl
     {
         private readonly ObservableCollection<Product> _products = new();
+        private readonly PosApiClient _api;
 
-        public ConsultProductView()
+        public ConsultProductView(PosApiClient api)
         {
+            _api = api;
             InitializeComponent();
             ProductsList.ItemsSource = _products;
-            FilterProducts();
+            Loaded += async (_, _) => await FilterProductsAsync();
         }
 
-        private void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e) => FilterProducts();
+        private async void SearchTextBox_TextChanged(object sender, TextChangedEventArgs e) => await FilterProductsAsync();
 
         private void ProductsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
@@ -40,16 +44,32 @@ namespace PDVMottainai.Views.Actions
             DetailDiscountPrice.Text = product.DiscountPrice?.ToString("C", culture) ?? "Sem promoção cadastrada";
         }
 
-        private void FilterProducts()
+        private async Task FilterProductsAsync()
         {
             var query = SearchTextBox?.Text?.Trim() ?? string.Empty;
-            _products.Clear();
-            foreach (var product in MockApiService.Products.Where(product => product.Active &&
-                (query.Length == 0 || product.Name.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                 product.Sku.Contains(query, StringComparison.OrdinalIgnoreCase) ||
-                 product.Barcode.Contains(query, StringComparison.OrdinalIgnoreCase))))
-                _products.Add(product);
-            CountText.Text = $"{_products.Count} produto(s)";
+            try
+            {
+                var result = await _api.GetProductsAsync(query);
+                _products.Clear();
+                foreach (var item in result)
+                    _products.Add(new Product
+                    {
+                        ProductId = item.ProductId,
+                        Sku = item.Sku,
+                        Barcode = item.Barcode ?? string.Empty,
+                        Name = item.Name,
+                        UnitMeasure = item.UnitMeasure,
+                        RegularPrice = item.NormalPrice,
+                        DiscountPrice = item.PromotionalPrice,
+                        Active = item.Active,
+                        Version = item.Version
+                    });
+                CountText.Text = $"{_products.Count} product(s)";
+            }
+            catch (Exception exception) when (exception is PosApiException or HttpRequestException)
+            {
+                MessageBox.Show($"Could not search products: {exception.Message}", "POS API", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
     }
 }

@@ -1,201 +1,157 @@
-﻿using PDVMottainai.Models;
-using PDVMottainai.Services;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
-using System.Text;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Input;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
+using PDVMottainai.Services;
 
-namespace PDVMottainai.Views
+namespace PDVMottainai.Views;
+
+public partial class LoginPage : Page
 {
-    /// <summary>
-    /// Lógica interna para LoginPage.xaml
-    /// </summary>
-    public partial class LoginPage : Page
+    private readonly PosApiClient _api = new();
+    private PosAvailableAccess? _availableAccess;
+
+    public ObservableCollection<PosStoreAccess> Stores { get; } = new();
+    public ObservableCollection<PosTerminalAccess> Terminals { get; } = new();
+
+    public LoginPage()
     {
-        // Cria os ObservableCollection que serão usados no ComboBox
-        public ObservableCollection<RetailStore> Stores { get; set; }
-        public ObservableCollection<PosTerminal> Terminals { get; set; }
+        InitializeComponent();
+        store.ItemsSource = Stores;
+        terminal.ItemsSource = Terminals;
+    }
 
-        public LoginPage()
+    private void loja_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        terminal.IsEnabled = Terminals.Count > 0;
+        if (terminal.SelectedItem is null && Terminals.Count > 0)
+            terminal.SelectedIndex = 0;
+    }
+
+    private void TogglePassword_Click(object sender, RoutedEventArgs e)
+    {
+        if (txtPasswordClose.Visibility == Visibility.Visible)
         {
-            InitializeComponent();
+            imgEye.Source = new BitmapImage(new Uri("pack://application:,,,/IMG/eyeOpenIcon.png"));
+            txtPasswordOpen.Text = txtPasswordClose.Password;
+            txtPasswordClose.Visibility = Visibility.Collapsed;
+            txtPasswordOpen.Visibility = Visibility.Visible;
+        }
+        else
+        {
+            imgEye.Source = new BitmapImage(new Uri("pack://application:,,,/IMG/eyeCloseIcon.png"));
+            txtPasswordClose.Password = txtPasswordOpen.Text;
+            txtPasswordOpen.Visibility = Visibility.Collapsed;
+            txtPasswordClose.Visibility = Visibility.Visible;
+        }
+    }
 
-            // Inicia os ObservableCollection que serão usados no ComboBox
-            Stores = new ObservableCollection<RetailStore>();
-            Terminals = new ObservableCollection<PosTerminal>();
+    private void HelpButton_Click(object sender, RoutedEventArgs e)
+    {
+        const string phoneNumber = "5511956775122";
+        const string message = "Olá, preciso de ajuda com o PDV Mottainai.";
+        var url = $"https://wa.me/{phoneNumber}?text={Uri.EscapeDataString(message)}";
+        try
+        {
+            Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch (Exception)
+        {
+            ShowError("Não foi possível abrir o WhatsApp. Verifique se ele está disponível neste dispositivo.");
+        }
+    }
 
+    private void CredentialsChanged(object sender, RoutedEventArgs e)
+    {
+        if (_availableAccess is null)
+            return;
+        _availableAccess = null;
+        Stores.Clear();
+        Terminals.Clear();
+        LoginErrorPanel.Visibility = Visibility.Collapsed;
+    }
+
+    private void CredentialsChanged(object sender, TextChangedEventArgs e) => CredentialsChanged(sender, new RoutedEventArgs());
+
+    private async void LogIn_Click(object sender, RoutedEventArgs e)
+    {
+        var password = txtPasswordClose.Visibility == Visibility.Visible ? txtPasswordClose.Password : txtPasswordOpen.Text;
+        if (string.IsNullOrWhiteSpace(txtEmail.Text) || string.IsNullOrWhiteSpace(password))
+        {
+            ShowError("Informe seu e-mail e sua senha.");
+            return;
         }
 
-        // Quando o usuário escolher uma loja:
-        private void loja_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        try
         {
-            if (store.SelectedValue != null)
+            if (_availableAccess is null)
             {
-                int idSelecionado = (int)store.SelectedValue;
-
-                listTerminals(idSelecionado);
-            }
-        }
-
-        //Lista lojas disponíveis para o funcionário
-        private void listStores(int currentUserId)
-        {
-            var listStores = MockApiService.Stores;
-            var listEmployees = MockApiService.Employees;
-
-            var employeeFound = listEmployees.FirstOrDefault(e => e.StoreId == currentUserId);
-
-            if (employeeFound != null)
-            {
-                // Filtra as lojas do funcionário
-                var lojasFiltradas = listStores.Where(s => s.StoreId == employeeFound.StoreId);
-
+                SetBusy(true);
+                _availableAccess = await _api.AuthenticateFirebaseAsync(txtEmail.Text.Trim(), password);
                 Stores.Clear();
-                foreach (var lojaItem in lojasFiltradas)
-                {
-                    Stores.Add(lojaItem);
-                }
-
-                // Atribui a fonte de dados e o caminho de exibição
-                store.ItemsSource = Stores;
-                store.DisplayMemberPath = "Name";
-
-                // Se houver itens, já deixa o primeiro selecionado
-                if (Stores.Count > 0)
-                {
-                    store.SelectedIndex = 0;
-                }
-
-                
-            }
-        }
-
-        //Lista terminais disponíveis para a loja
-        private void listTerminals(int storeId)
-        {
-
-            var listTerminals = MockApiService.Terminals;
-            var listStores = MockApiService.Stores;
-
-            var storesFound = listStores.FirstOrDefault(s => s.StoreId == storeId);
-
-            if (storesFound != null)
-            {
-                var terminaisFiltrados = listTerminals.Where(s => s.StoreId == storesFound.StoreId);
-
+                foreach (var item in _availableAccess.Stores)
+                    Stores.Add(item);
                 Terminals.Clear();
-
-                foreach (var terminalItem in terminaisFiltrados)
-                {
-                    Terminals.Add(terminalItem);
-                }
-
-                terminal.ItemsSource = Terminals;
-                terminal.DisplayMemberPath = "Name";
-
-                if (Stores.Count > 0)
-                {
+                foreach (var item in _availableAccess.Terminals)
+                    Terminals.Add(item);
+                if (Stores.Count == 1)
+                    store.SelectedIndex = 0;
+                if (Terminals.Count == 1)
                     terminal.SelectedIndex = 0;
-                }
 
-            }
-
-
-        }
-
-        // Mostrar e ocultar senha
-        private void TogglePassword_Click(object sender, RoutedEventArgs e)
-        {
-            if (txtPasswordClose.Visibility == Visibility.Visible)
-            {
-                imgEye.Source = new BitmapImage(new Uri("pack://application:,,,/IMG/eyeOpenIcon.png"));
-                txtPasswordOpen.Text = txtPasswordClose.Password;
-                txtPasswordClose.Visibility = Visibility.Collapsed;
-                txtPasswordOpen.Visibility = Visibility.Visible;
-            }
-            else
-            {
-                imgEye.Source = new BitmapImage(new Uri("pack://application:,,,/IMG/eyeCloseIcon.png"));
-
-                txtPasswordClose.Password = txtPasswordOpen.Text;
-                txtPasswordOpen.Visibility = Visibility.Collapsed;
-                txtPasswordClose.Visibility = Visibility.Visible;
-            }
-        }
-
-        private void HelpButton_Click(object sender, RoutedEventArgs e)
-        {
-            const string phoneNumber = "5511956775122";
-            const string message = "Olá, preciso de ajuda com o PDV Mottainai.";
-            var url = $"https://wa.me/{phoneNumber}?text={Uri.EscapeDataString(message)}";
-
-            try
-            {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
-            }
-            catch (Exception)
-            {
-                txtMsg.Text = "Não foi possível abrir o WhatsApp. Verifique se ele está disponível neste dispositivo.";
-                LoginErrorPanel.Visibility = Visibility.Visible;
-            }
-        }
-
-        // Sempre que o usuário mudar algo em suas credenciais:
-        private void txtEmail_TextChanged(object sender, TextChangedEventArgs e){ TakeStores();}
-        private void txtPasswordClose_PasswordChanged(object sender, RoutedEventArgs e){ TakeStores();}
-
-        // Fazer login
-        private void TakeStores()
-        {
-            var listUsers = MockApiService.Users;
-
-            var UserFound = listUsers.FirstOrDefault(e => e.Email == txtEmail.Text && (e.PasswordHash == txtPasswordOpen.Text || e.PasswordHash == txtPasswordClose.Password));
-
-            if (UserFound != null)
-            {
-                listStores(UserFound.UserId);
-                LoginErrorPanel.Visibility = Visibility.Collapsed;
-            }
-            else
-            {
-                txtMsg.Text = "Credenciais inválidas!";
-                LoginErrorPanel.Visibility = Visibility.Visible;
-                terminal.ItemsSource = null;
-                store.ItemsSource = null;
-            }
-        }
-
-        private void LogIn_Click(object sender, RoutedEventArgs e)
-        {
-            var listUsers = MockApiService.Users;
-
-            var UserFound = listUsers.FirstOrDefault(e => e.Email == txtEmail.Text && (e.PasswordHash == txtPasswordOpen.Text || e.PasswordHash == txtPasswordClose.Password));
-
-            if (UserFound != null)
-            {
-                //  Pega diretamente o objeto RetailStore selecionado no ComboBox
-                if (store.SelectedItem is PDVMottainai.Models.RetailStore selectedStore)
+                if (Terminals.Count == 0)
+                    throw new PosApiException("No active POS terminal is assigned to this operator.", System.Net.HttpStatusCode.Forbidden);
+                if (Terminals.Count > 1)
                 {
-                    salePage proximaPagina = new salePage(selectedStore.Name, UserFound.Email);
-
-                    this.NavigationService.Navigate(proximaPagina);
-                }
-                else
-                {
-                    MessageBox.Show("Por favor, selecione uma loja.");
+                    ShowError("Access confirmed. Select the store and terminal, then choose Start shift again.");
+                    return;
                 }
             }
 
-        }
+            if (terminal.SelectedItem is not PosTerminalAccess selectedTerminal)
+            {
+                ShowError("Select an available POS terminal to continue.");
+                return;
+            }
 
+            SetBusy(true);
+            var session = await _api.SelectTerminalAsync(selectedTerminal.TerminalCode);
+            NavigationService?.Navigate(new salePage(_api, session));
+        }
+        catch (PosApiException exception)
+        {
+            ShowError($"POS API: {exception.Message}");
+        }
+        catch (HttpRequestException exception)
+        {
+            ShowError($"Could not reach the POS API: {exception.Message}");
+        }
+        catch (TaskCanceledException)
+        {
+            ShowError("The request timed out. Check the POS API and network connection.");
+        }
+        finally
+        {
+            SetBusy(false);
+        }
+    }
+
+    private void SetBusy(bool isBusy)
+    {
+        Mouse.OverrideCursor = isBusy ? System.Windows.Input.Cursors.Wait : null;
+        txtEmail.IsEnabled = !isBusy;
+        txtPasswordClose.IsEnabled = !isBusy;
+        txtPasswordOpen.IsEnabled = !isBusy;
+        store.IsEnabled = !isBusy && Stores.Count > 0;
+        terminal.IsEnabled = !isBusy && Terminals.Count > 0;
+    }
+
+    private void ShowError(string message)
+    {
+        txtMsg.Text = message;
+        LoginErrorPanel.Visibility = Visibility.Visible;
     }
 }

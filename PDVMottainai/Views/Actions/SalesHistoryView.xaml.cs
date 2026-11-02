@@ -15,7 +15,7 @@ namespace PDVMottainai.Views.Actions
             InitializeComponent();
             var entries = history.OrderByDescending(sale => sale.SaleDate).ToList();
             HistoryList.ItemsSource = entries;
-            CountTextBlock.Text = $"{entries.Count} venda(s)";
+            CountTextBlock.Text = $"{entries.Count} registro(s)";
             EmptyStateText.Visibility = entries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
             if (entries.Count > 0)
                 HistoryList.SelectedIndex = 0;
@@ -26,24 +26,21 @@ namespace PDVMottainai.Views.Actions
             if (HistoryList.SelectedItem is not CompletedSale sale)
                 return;
 
-            DetailCustomer.Text = sale.CustomerName;
+            DetailCustomer.Text = $"Status: {sale.Status}";
             DetailDate.Text = $"Venda #{sale.SaleNumber} · {sale.SaleDate:dd/MM/yyyy às HH:mm}";
-            DetailCpf.Text = string.IsNullOrWhiteSpace(sale.CustomerCpf) ? "CPF não informado" :
-                $"CPF: {sale.CustomerCpf}" + (sale.IsMottainaiMember ? " · cliente Mottainai" : " · cliente comum");
+            DetailCpf.Text = "Detalhes de cliente não retornados nesta rota.";
             DetailRegularTotal.Text = sale.RegularTotal.ToString("C", _culture);
             DetailDiscountTotal.Text = sale.DiscountTotal.ToString("C", _culture);
             DetailEarned.Text = sale.Earned.ToString("C", _culture);
             DetailItemsList.ItemsSource = sale.Items;
             PaymentDetailsText.Text = "Pagamentos: " +
                 (sale.Payments.Count == 0
-                    ? "—"
+                    ? "não retornados pela API"
                     : string.Join(" · ", sale.Payments.Select(payment =>
                         payment.Change > 0
                             ? $"{payment.Method} {payment.Amount.ToString("C", _culture)} (troco {payment.Change.ToString("C", _culture)})"
                             : $"{payment.Method} {payment.Amount.ToString("C", _culture)}")));
-            InvoiceText.Text = sale.CpfOnInvoice
-                ? $"CPF na nota: {sale.CustomerCpf}"
-                : "CPF na nota: não solicitado";
+            InvoiceText.Text = "A rota de histórico não retorna dados fiscais.";
         }
     }
 }
