@@ -49,9 +49,6 @@
     <Resource Include="IMG\inProgressIcon.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
-    <Resource Include="IMG\otter.png">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Resource>
     <Resource Include="IMG\mottainai.png">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Resource>
