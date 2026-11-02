@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
 namespace PDVMottainai.Models
 {
-    internal class Product
+    public class Product
     {
         public int ProductId { get; set; }
         public int CategoryId { get; set; }
@@ -17,6 +17,8 @@ namespace PDVMottainai.Models
         public string? Description { get; set; }
         public string? Brand { get; set; }
         public string UnitMeasure { get; set; } = string.Empty;
+        public decimal? RegularPrice { get; set; }
+        public decimal? DiscountPrice { get; set; }
         public decimal? Weight { get; set; }
         public bool Active { get; set; } = true;
         public DateTime CreatedAt { get; set; } = DateTime.Now;
@@ -27,3 +29,4 @@ namespace PDVMottainai.Models
 
     }
 }
+

@@ -1,0 +1,31 @@
+<UserControl x:Class="PDVMottainai.Views.Actions.RemoveProductView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <TextBlock x:Name="FeedbackText" Text="Selecione o item que deseja remover da venda."
+                   FontSize="15" Foreground="#667784" Margin="0,0,0,12"/>
+        <ListView x:Name="SaleItemsList" Grid.Row="1" BorderThickness="0" Background="Transparent"
+                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+            <ListView.ItemContainerStyle>
+                <Style TargetType="ListViewItem">
+                    <Setter Property="Padding" Value="10"/>
+                    <Setter Property="Margin" Value="0,0,0,6"/>
+                    <Setter Property="Background" Value="#F5F8FA"/>
+                    <Setter Property="BorderThickness" Value="0"/>
+                </Style>
+            </ListView.ItemContainerStyle>
+            <ListView.ItemTemplate>
+                <DataTemplate>
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel><TextBlock Text="{Binding Product.Name}" FontSize="15" FontWeight="SemiBold" Foreground="#102A43"/>
+                            <TextBlock Text="{Binding Product.Sku}" Foreground="#667784" Margin="0,3,0,0"/></StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding Quantity, StringFormat=Qtd. {0}}" Foreground="#EB7A24"
+                                   FontWeight="Bold" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                    </Grid>
+                </DataTemplate>
+            </ListView.ItemTemplate>
+        </ListView>
+    </Grid>
+</UserControl>
